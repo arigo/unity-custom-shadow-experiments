@@ -154,15 +154,56 @@
                 // get distance to lightPos
                 float4 lightSpacePos = mul(_LightMatrix, i.wPos);
                 float3 lightSpaceNorm = normalize(mul(_LightMatrix, mul(unity_ObjectToWorld, i.normal)));
-                float depth = lightSpacePos.z / _ShadowTexScale.z;
+                float depth = lightSpacePos.z * _ShadowTexScale.z;
 
                 float2 uv = lightSpacePos.xy;
-                uv += _ShadowTexScale.xy / 2;
-                uv /= _ShadowTexScale.xy;
+                uv *= _ShadowTexScale.xy;      /* should be in range [-0.5, 0.5] here */
+                float cascade = 0;
+                const float MAX = 0.49;
+                if (any(float4(uv, -uv) > MAX))
+                {
+                    uv *= 0.5;
+                    cascade = 1;
+                    if (any(float4(uv, -uv) > MAX))
+                    {
+                        uv *= 0.5;
+                        cascade = 2;
+                        if (any(float4(uv, -uv) > MAX))
+                        {
+                            uv *= 0.5;
+                            cascade = 3;
+                            if (any(float4(uv, -uv) > MAX))
+                            {
+                                uv *= 0.5;
+                                cascade = 4;
+                                if (any(float4(uv, -uv) > MAX))
+                                {
+                                    uv *= 0.5;
+                                    cascade = 5;
+                                    if (any(float4(uv, -uv) > MAX))
+                                    {
+                                        uv *= 0.5;
+                                        cascade = 6;
+                                        if (any(float4(uv, -uv) > MAX))
+                                        {
+                                            uv *= 0.5;
+                                            cascade = 7;
+                                            if (any(float4(uv, -uv) > MAX))
+                                                uv = float2(0.5, 0.5);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                uv += float2(0.5, 0.5 + cascade);
 
                 float shadowIntensity = 0;
                 float2 offset = lightSpaceNorm * _ShadowTexScale.w;
-                float4 samp = tex2D(_ShadowTex, uv + offset);
+                uv += offset;
+                uv.y *= 1. / 8;
+                float4 samp = tex2D(_ShadowTex, uv, 0, 0);
 
 #ifdef HARD_SHADOWS
                 float sDepth = samp.r;
@@ -188,17 +229,22 @@
                 // calculate our initial probability based on the basic depths
                 // if our depth is closer than x, then the fragment has a 100%
                 // probability of being lit (p=1)
-                float p_inv = depth > (x + _DeltaExtraDistance);
+                float p_inv = depth > (x + _DeltaExtraDistance * pow(2, cascade));
                 
                 // calculate the upper bound of the probability using Chebyshev's inequality
                 // https://en.wikipedia.org/wiki/Chebyshev%27s_inequality
                 float delta = depth - x;
                 float p_max = var / (var + delta*delta);
 
+                p_max = 1.9 - p_max * 3;
+                p_max *= pow(2, cascade);
+
                 // To alleviate the light bleeding, expand the shadows to fill in the gaps
                 //float amount = _VarianceShadowExpansion;
                 //p_max = clamp( (p_max - amount) / (1 - amount), 0, 1);
-                float p_max_inv = clamp(2.4 - p_max * 3, 0, 1);
+                float p_max_inv = clamp(p_max + 0.5, 0, 1);
+
+                //p_max_inv = 1;  // XXXXXXXXXXXXXX
 
                 shadowIntensity = p_max_inv * p_inv;
 #endif

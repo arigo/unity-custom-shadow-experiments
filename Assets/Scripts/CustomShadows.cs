@@ -4,6 +4,8 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 public class CustomShadows : MonoBehaviour {
 
+    const int CASCADES = 8;
+
     public enum Shadows
     {
         NONE,
@@ -50,21 +52,20 @@ public class CustomShadows : MonoBehaviour {
         UpdateShadowCameraPos();
 
         _shadowCam.targetTexture = _target;
-        _shadowCam.RenderWithShader(_depthShader, "");
 
-        /*if (_shadowType == Shadows.VARIANCE)*/
+        for (int lvl = CASCADES; --lvl >= 0; )
         {
-            /*for (int i = 0; i < blurIterations; i++)*/
-            {
-                _blur.SetTexture(0, "Read", _target);
-                _blur.SetTexture(0, "Result", _backTarget);
-                _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
+            _shadowCam.orthographicSize = 2.0f * Mathf.Pow(2, lvl);
+            _shadowCam.RenderWithShader(_depthShader, "");
 
-                /*Swap(ref _backTarget, ref _target);*/
-            }
-
-            _backTarget.GenerateMips();
+            _blur.SetTexture(0, "Read", _target);
+            _blur.SetTexture(0, "Result", _backTarget);
+            _blur.SetVector("Shift", new Vector2(0, _target.width * lvl));
+            _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
         }
+
+        //_blur.SetVector("Shift", new Vector2(0, 1f - 1f / _target.height));
+        //_blur.Dispatch(1, _target.width / 8, 1, 1);
 
         UpdateShaderValues();
     }
@@ -105,7 +106,7 @@ public class CustomShadows : MonoBehaviour {
         if (_shadowCam) return;
 
         // Create the shadow rendering camera
-        GameObject go = new GameObject("shadow cam");
+        GameObject go = new GameObject("shadow cam (not saved)");
         //go.hideFlags = HideFlags.HideAndDontSave;
         go.hideFlags = HideFlags.DontSave;
 
@@ -139,6 +140,10 @@ public class CustomShadows : MonoBehaviour {
         size.x = _shadowCam.aspect * size.y;
         size.z = _shadowCam.farClipPlane;
         size.w = 1.0f / _resolution;
+
+        size.x = 1f / size.x;
+        size.y = 1f / size.y;
+        size.z = 1f / size.z;
         Shader.SetGlobalVector("_ShadowTexScale", size);
     }
 
@@ -158,6 +163,21 @@ public class CustomShadows : MonoBehaviour {
         }
     }
 
+    void UpdateShadowCameraPos()
+    {
+        const float Z_DISTANCE = 200;
+
+        Camera cam = _shadowCam;
+        Light l = FindObjectOfType<Light>();
+        cam.transform.position = l.transform.position - l.transform.forward * Z_DISTANCE;
+        cam.transform.rotation = l.transform.rotation;
+        cam.transform.LookAt(cam.transform.position + cam.transform.forward, cam.transform.up);
+
+        cam.farClipPlane = 2 * Z_DISTANCE;
+        cam.aspect = 1;
+    }
+
+#if false
     // Update the camera view to encompass the geometry it will draw
     void UpdateShadowCameraPos()
     {
@@ -182,13 +202,14 @@ public class CustomShadows : MonoBehaviour {
         cam.aspect = extents.x / extents.y;
         cam.orthographicSize = extents.y / 2;
     }
+#endif
     #endregion
 
     #region Utilities
     // Creates a rendertarget
     RenderTexture CreateTarget(bool back)
     {
-        RenderTexture tg = new RenderTexture(_resolution, _resolution,
+        RenderTexture tg = new RenderTexture(_resolution, _resolution * (back ? CASCADES : 1),
                                              back ? 0 : 24,
                                              RenderTextureFormat.RGFloat);
         if (back)
@@ -201,8 +222,8 @@ public class CustomShadows : MonoBehaviour {
 
         if (back)
         {
-            tg.autoGenerateMips = false;
-            tg.useMipMap = true;
+            //tg.autoGenerateMips = false;
+            //tg.useMipMap = true;
         }
         tg.Create();
 
@@ -222,6 +243,7 @@ public class CustomShadows : MonoBehaviour {
         return "";
     }
 
+#if false
     // Returns the bounds extents in the provided frame
     void GetRenderersExtents(List<Renderer> renderers, Transform frame, out Vector3 center, out Vector3 extents)
     {
@@ -276,5 +298,6 @@ public class CustomShadows : MonoBehaviour {
         a = b;
         b = temp;
     }
+#endif
     #endregion
 }
