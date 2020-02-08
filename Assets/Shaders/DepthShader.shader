@@ -51,7 +51,7 @@
 
                 // TODO: Understand why depth is reversed
                 float depth = 1 - i.vertex.z;
-                return float4(depth, pow(depth, 2), 0, 0);
+                return float4(depth, depth * depth, 0, 0);
             }
             ENDCG
         }

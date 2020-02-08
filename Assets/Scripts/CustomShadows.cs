@@ -22,22 +22,22 @@ public class CustomShadows : MonoBehaviour {
     ComputeShader _blur;
 
     [Header("Shadow Settings")]
-    [Range(0, 100)]
-    public int blurIterations = 1;
+    //[Range(0, 100)]
+    //public int blurIterations = 1;
 
     [Range(0, 1)]
     public float maxShadowIntensity = 1;
     public bool drawTransparent = true;
 
     [Range(0, 1)]
-    public float varianceShadowExpansion = 0.3f;
-    public Shadows _shadowType = Shadows.HARD;
+    //public float varianceShadowExpansion = 0.3f;
+    //public Shadows _shadowType = Shadows.HARD;
     public FilterMode _filterMode = FilterMode.Bilinear;
 
     // Render Targets
     Camera _shadowCam;
-    RenderTexture _backTarget;
-    RenderTexture _target;
+    public RenderTexture _backTarget;  // view only in the inspector in game mode
+    public RenderTexture _target;      // view only in the inspector in game mode
 
     #region LifeCycle
     void Update ()
@@ -46,20 +46,22 @@ public class CustomShadows : MonoBehaviour {
         SetUpShadowCam();
         UpdateRenderTexture();
         UpdateShadowCameraPos();
-        
+
         _shadowCam.targetTexture = _target;
         _shadowCam.RenderWithShader(_depthShader, "");
 
-        if (_shadowType == Shadows.VARIANCE)
+        /*if (_shadowType == Shadows.VARIANCE)*/
         {
-            for (int i = 0; i < blurIterations; i++)
+            /*for (int i = 0; i < blurIterations; i++)*/
             {
                 _blur.SetTexture(0, "Read", _target);
                 _blur.SetTexture(0, "Result", _backTarget);
                 _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
 
-                Swap(ref _backTarget, ref _target);
+                /*Swap(ref _backTarget, ref _target);*/
             }
+
+            _backTarget.GenerateMips();
         }
 
         UpdateShaderValues();
@@ -70,7 +72,7 @@ public class CustomShadows : MonoBehaviour {
     {
         if (_shadowCam)
         {
-            DestroyImmediate(_shadowCam.gameObject); 
+            DestroyImmediate(_shadowCam.gameObject);
             _shadowCam = null;
         }
 
@@ -102,31 +104,31 @@ public class CustomShadows : MonoBehaviour {
 
         // Create the shadow rendering camera
         GameObject go = new GameObject("shadow cam");
-        //go.hideFlags = HideFlags.HideAndDontSave; 
-        go.hideFlags = HideFlags.DontSave; 
+        //go.hideFlags = HideFlags.HideAndDontSave;
+        go.hideFlags = HideFlags.DontSave;
 
         _shadowCam = go.AddComponent<Camera>();
         _shadowCam.orthographic = true;
         _shadowCam.nearClipPlane = 0;
         _shadowCam.enabled = false;
-        _shadowCam.backgroundColor = new Color(0, 0, 0, 0);
+        _shadowCam.backgroundColor = new Color(1, 1, 0, 0); // new Color(0, 0.05f, 0, 0);
         _shadowCam.clearFlags = CameraClearFlags.SolidColor;
     }
 
     void UpdateShaderValues()
     {
         ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
-        Shader.EnableKeyword(ToKeyword(_shadowType));
+        Shader.EnableKeyword(ToKeyword(Shadows.VARIANCE));
 
         // Set the qualities of the textures
-        Shader.SetGlobalTexture("_ShadowTex", _target);
+        Shader.SetGlobalTexture("_ShadowTex", _backTarget);
         Shader.SetGlobalMatrix("_LightMatrix", _shadowCam.transform.worldToLocalMatrix);
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
-        Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
+        //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
 
         if(drawTransparent) Shader.EnableKeyword("DRAW_TRANSPARENT_SHADOWS");
         else Shader.DisableKeyword("DRAW_TRANSPARENT_SHADOWS");
-        
+
         // TODO: Generate a matrix that transforms between 0-1 instead
         // of doing the extra math on the GPU
         Vector4 size = Vector4.zero;
@@ -148,8 +150,8 @@ public class CustomShadows : MonoBehaviour {
 
         if (_target == null)
         {
-            _target = CreateTarget();
-            _backTarget = CreateTarget();
+            _target = CreateTarget(false);
+            _backTarget = CreateTarget(true);
         }
     }
 
@@ -181,12 +183,24 @@ public class CustomShadows : MonoBehaviour {
 
     #region Utilities
     // Creates a rendertarget
-    RenderTexture CreateTarget()
+    RenderTexture CreateTarget(bool back)
     {
-        RenderTexture tg = new RenderTexture(_resolution, _resolution, 24, RenderTextureFormat.RGFloat);
-        tg.filterMode = _filterMode;
+        RenderTexture tg = new RenderTexture(_resolution, _resolution,
+                                             back ? 0 : 24,
+                                             RenderTextureFormat.RGFloat);
+        if (back)
+            tg.filterMode = _filterMode;
         tg.wrapMode = TextureWrapMode.Clamp;
-        tg.enableRandomWrite = true;
+        if (back)
+            tg.enableRandomWrite = true;
+        else
+            tg.antiAliasing = 8;
+
+        if (back)
+        {
+            tg.autoGenerateMips = false;
+            tg.useMipMap = true;
+        }
         tg.Create();
 
         return tg;

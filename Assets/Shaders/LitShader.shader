@@ -29,9 +29,9 @@
             // Shadow Variables
             float _MaxShadowIntensity;
             int _DrawTransparentGeometry;
-            float _VarianceShadowExpansion;
+            //float _VarianceShadowExpansion;
 
-            float3 CTIllum(float4 wVertex, float3 normal)
+            float3 CTIllum(float4 wVertex, float3 normal, float shadowIntensity)
             {
                 // Reference
                 // http://ruh.li/GraphicsCookTorrance.html
@@ -80,6 +80,7 @@
                     float fresnel = pow(1.0 - VdotH, 5.0);
                     fresnel *= 1 - fresnel_val;
                     fresnel += fresnel_val;
+                    fresnel *= 1 - shadowIntensity;
 
                     // Calculate the final specular value
                     float s = (1-k)*(fresnel * geometric * roughness) / (NdotV * NdotL * 3.14 + 1.0e-7) + k;
@@ -148,11 +149,6 @@
 
             fixed4 frag (v2f i) : COLOR
 			{
-                // COLOR
-                // modulate with lighting
-                float4 color = _Color;
-                color = float4(CTIllum(i.wPos, i.normal), color.a);
-
                 // SHADOWS
                 // get distance to lightPos
                 float4 lightSpacePos = mul(_LightMatrix, i.wPos);
@@ -191,7 +187,7 @@
                 // calculate our initial probability based on the basic depths
                 // if our depth is closer than x, then the fragment has a 100%
                 // probability of being lit (p=1)
-                float p = depth <= x;
+                float p_inv = depth > (x + 0.0025);
                 
                 // calculate the upper bound of the probability using Chebyshev's inequality
                 // https://en.wikipedia.org/wiki/Chebyshev%27s_inequality
@@ -199,14 +195,21 @@
                 float p_max = var / (var + delta*delta);
 
                 // To alleviate the light bleeding, expand the shadows to fill in the gaps
-                float amount = _VarianceShadowExpansion;
-                p_max = clamp( (p_max - amount) / (1 - amount), 0, 1);
+                //float amount = _VarianceShadowExpansion;
+                //p_max = clamp( (p_max - amount) / (1 - amount), 0, 1);
+                float p_max_inv = clamp(2.4 - p_max * 3, 0, 1);
 
-                shadowIntensity = 1 - max(p, p_max);
+                shadowIntensity = p_max_inv * p_inv;
 #endif
 #ifdef MOMENT_SHADOWS
                 shadowIntensity = ComputeMSMShadowIntensity(samp, depth);
 #endif
+
+                // COLOR
+                // modulate with lighting
+                float4 color = _Color;
+                color = float4(CTIllum(i.wPos, i.normal, shadowIntensity), color.a);
+
                 color.xyz *= 1 - shadowIntensity * _MaxShadowIntensity;
                 color.xyz += UNITY_LIGHTMODEL_AMBIENT.xyz;
 
