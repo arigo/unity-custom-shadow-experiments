@@ -64,8 +64,8 @@ public class CustomShadows : MonoBehaviour {
             _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
         }
 
-        //_blur.SetVector("Shift", new Vector2(0, 1f - 1f / _target.height));
-        //_blur.Dispatch(1, _target.width / 8, 1, 1);
+        _blur.SetVector("Shift", new Vector2(0, 1f - 0.5f / _target.height));
+        _blur.Dispatch(1, _target.width / 8, 1, 1);
 
         UpdateShaderValues();
     }

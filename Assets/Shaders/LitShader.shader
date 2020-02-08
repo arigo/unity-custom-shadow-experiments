@@ -163,43 +163,14 @@
                 uv += offset;
                 float cascade = 0;
                 const float MAX = 0.49;
-                if (any(float4(uv, -uv) > MAX))
-                {
-                    uv *= 0.5;
-                    cascade = 1;
-                    if (any(float4(uv, -uv) > MAX))
-                    {
-                        uv *= 0.5;
-                        cascade = 2;
-                        if (any(float4(uv, -uv) > MAX))
-                        {
-                            uv *= 0.5;
-                            cascade = 3;
-                            if (any(float4(uv, -uv) > MAX))
-                            {
-                                uv *= 0.5;
-                                cascade = 4;
-                                if (any(float4(uv, -uv) > MAX))
-                                {
-                                    uv *= 0.5;
-                                    cascade = 5;
-                                    if (any(float4(uv, -uv) > MAX))
-                                    {
-                                        uv *= 0.5;
-                                        cascade = 6;
-                                        if (any(float4(uv, -uv) > MAX))
-                                        {
-                                            uv *= 0.5;
-                                            cascade = 7;
-                                            if (any(float4(uv, -uv) > MAX))
-                                                uv = float2(0.5, 0.5);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+
+
+                float2 uv_abs = abs(uv);
+                float magnitude = max(uv_abs.x, uv_abs.y) / MAX;
+                cascade = ceil(log2(max(magnitude, 0.75)));   /* an integer >= 0 */
+                uv *= pow(0.5, cascade);
+
+
                 uv += float2(0.5, 0.5 + cascade);
 
                 float shadowIntensity = 0;
