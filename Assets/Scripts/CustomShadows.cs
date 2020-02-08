@@ -165,7 +165,7 @@ public class CustomShadows : MonoBehaviour {
 
     void UpdateShadowCameraPos()
     {
-        const float Z_DISTANCE = 200;
+        const float Z_DISTANCE = 100;
 
         Camera cam = _shadowCam;
         Light l = FindObjectOfType<Light>();
