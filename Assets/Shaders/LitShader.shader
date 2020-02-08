@@ -156,8 +156,11 @@
                 float3 lightSpaceNorm = normalize(mul(_LightMatrix, mul(unity_ObjectToWorld, i.normal)));
                 float depth = lightSpacePos.z * _ShadowTexScale.z;
 
+                float2 offset = lightSpaceNorm * _ShadowTexScale.w;
+
                 float2 uv = lightSpacePos.xy;
                 uv *= _ShadowTexScale.xy;      /* should be in range [-0.5, 0.5] here */
+                uv += offset;
                 float cascade = 0;
                 const float MAX = 0.49;
                 if (any(float4(uv, -uv) > MAX))
@@ -200,10 +203,8 @@
                 uv += float2(0.5, 0.5 + cascade);
 
                 float shadowIntensity = 0;
-                float2 offset = lightSpaceNorm * _ShadowTexScale.w;
-                uv += offset;
                 uv.y *= 1. / 8;
-                float4 samp = tex2D(_ShadowTex, uv, 0, 0);
+                float4 samp = tex2D(_ShadowTex, uv);
 
 #ifdef HARD_SHADOWS
                 float sDepth = samp.r;

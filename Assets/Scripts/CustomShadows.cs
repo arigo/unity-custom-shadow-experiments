@@ -60,7 +60,7 @@ public class CustomShadows : MonoBehaviour {
 
             _blur.SetTexture(0, "Read", _target);
             _blur.SetTexture(0, "Result", _backTarget);
-            _blur.SetVector("Shift", new Vector2(0, _target.width * lvl));
+            _blur.SetVector("Shift", new Vector2(0, _target.height * lvl));
             _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
         }
 
