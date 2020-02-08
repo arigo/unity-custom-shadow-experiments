@@ -29,8 +29,10 @@ public class CustomShadows : MonoBehaviour {
     public float maxShadowIntensity = 1;
     public bool drawTransparent = true;
 
-    [Range(0, 1)]
+    //[Range(0, 1)]
     //public float varianceShadowExpansion = 0.3f;
+    [Range(0, 0.1f)]
+    public float deltaExtraDistance = 0.004f;
     //public Shadows _shadowType = Shadows.HARD;
     public FilterMode _filterMode = FilterMode.Bilinear;
 
@@ -125,8 +127,9 @@ public class CustomShadows : MonoBehaviour {
         Shader.SetGlobalMatrix("_LightMatrix", _shadowCam.transform.worldToLocalMatrix);
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
+        Shader.SetGlobalFloat("_DeltaExtraDistance", deltaExtraDistance);
 
-        if(drawTransparent) Shader.EnableKeyword("DRAW_TRANSPARENT_SHADOWS");
+        if (drawTransparent) Shader.EnableKeyword("DRAW_TRANSPARENT_SHADOWS");
         else Shader.DisableKeyword("DRAW_TRANSPARENT_SHADOWS");
 
         // TODO: Generate a matrix that transforms between 0-1 instead

@@ -30,6 +30,7 @@
             float _MaxShadowIntensity;
             int _DrawTransparentGeometry;
             //float _VarianceShadowExpansion;
+            float _DeltaExtraDistance;
 
             float3 CTIllum(float4 wVertex, float3 normal, float shadowIntensity)
             {
@@ -187,7 +188,7 @@
                 // calculate our initial probability based on the basic depths
                 // if our depth is closer than x, then the fragment has a 100%
                 // probability of being lit (p=1)
-                float p_inv = depth > (x + 0.0025);
+                float p_inv = depth > (x + _DeltaExtraDistance);
                 
                 // calculate the upper bound of the probability using Chebyshev's inequality
                 // https://en.wikipedia.org/wiki/Chebyshev%27s_inequality
