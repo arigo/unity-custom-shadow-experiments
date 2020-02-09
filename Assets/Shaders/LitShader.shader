@@ -22,8 +22,7 @@
             float4 _Color;
 
             // Shadow Map info
-            UNITY_DECLARE_TEX2DARRAY(_ShadowTex1);
-            UNITY_DECLARE_TEX2DARRAY(_ShadowTex2);
+            sampler _ShadowTex;
             float4x4 _LightMatrix;
             float4 _ShadowTexScale;
 
@@ -167,18 +166,17 @@
                 const int CASCADES = 6;
                 float2 uv_abs = abs(uv);
                 float magnitude = max(uv_abs.x, uv_abs.y) * (2 / MAX);
-                int cascade = log2(clamp(magnitude, 1, 1 << (CASCADES - 1)));
-                /* ^^^ an integer between 0 and CASCADES-1 */
+                int cascade = log2(max(magnitude, 1));
+                /* ^^^ an integer at least 0 */
                 int cascade_scale = 1 << cascade;
                 uv /= cascade_scale;
 
 
-                uv += float2(0.5, 0.5);
+                uv += float2(0.5, 0.5 + cascade);
+                uv.y /= CASCADES;
 
                 float shadowIntensity = 0;
-                float2 samp;
-                samp.r = UNITY_SAMPLE_TEX2DARRAY(_ShadowTex1, float3(uv, cascade));
-                samp.g = UNITY_SAMPLE_TEX2DARRAY(_ShadowTex2, float3(uv, cascade));
+                float2 samp = tex2D(_ShadowTex, uv);
 
 //#ifdef VARIANCE_SHADOWS
 

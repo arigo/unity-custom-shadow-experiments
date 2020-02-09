@@ -41,8 +41,7 @@ public class CustomShadows : MonoBehaviour {
 
     // Render Targets
     Camera _shadowCam;
-    public RenderTexture _backTarget1; // view only in the inspector in game mode
-    public RenderTexture _backTarget2; // view only in the inspector in game mode
+    public RenderTexture _backTarget;  // view only in the inspector in game mode
     public RenderTexture _target;      // view only in the inspector in game mode
 
     #region LifeCycle
@@ -55,7 +54,7 @@ public class CustomShadows : MonoBehaviour {
 
         _shadowCam.targetTexture = _target;
 
-        _blur.SetTexture(0, "Result1", _backTarget1);
+        /*_blur.SetTexture(0, "Result1", _backTarget1);
         _blur.SetTexture(0, "Result2", _backTarget2);
 
         for (int lvl = CASCADES; --lvl >= 0; )
@@ -75,6 +74,28 @@ public class CustomShadows : MonoBehaviour {
                 _blur.SetTexture(1, "Result2", _backTarget2);
                 _blur.Dispatch(1, _target.width / 8, 1, 1);
             }
+        }*/
+
+        for (int lvl = CASCADES; --lvl >= 0;)
+        {
+            _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
+            _shadowCam.RenderWithShader(_depthShader, "");
+
+            Graphics.CopyTexture(_target, 0, 0, 0, 0, _target.width, _target.height,
+                                 _backTarget, 0, 0, 0, lvl * _target.height);
+
+            /*_blur.SetTexture(0, "Read", _target);
+            _blur.SetInt("CurrentZ", lvl);
+            _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
+
+            if (lvl == CASCADES - 1)
+            {
+                _blur.SetInt("CurrentDimensionMinus1", _target.width - 1);
+                _blur.SetInt("CurrentZ", lvl);
+                _blur.SetTexture(1, "Result1", _backTarget1);
+                _blur.SetTexture(1, "Result2", _backTarget2);
+                _blur.Dispatch(1, _target.width / 8, 1, 1);
+            }*/
         }
 
         UpdateShaderValues();
@@ -87,15 +108,10 @@ public class CustomShadows : MonoBehaviour {
             DestroyImmediate(_target);
             _target = null;
         }
-        if (_backTarget1)
+        if (_backTarget)
         {
-            DestroyImmediate(_backTarget1);
-            _backTarget1 = null;
-        }
-        if (_backTarget2)
-        {
-            DestroyImmediate(_backTarget2);
-            _backTarget2 = null;
+            DestroyImmediate(_backTarget);
+            _backTarget = null;
         }
     }
 
@@ -141,8 +157,7 @@ public class CustomShadows : MonoBehaviour {
         //Shader.EnableKeyword(ToKeyword(Shadows.VARIANCE));
 
         // Set the qualities of the textures
-        Shader.SetGlobalTexture("_ShadowTex1", _backTarget1);
-        Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
+        Shader.SetGlobalTexture("_ShadowTex", _backTarget);
         Shader.SetGlobalMatrix("_LightMatrix", _shadowCam.transform.worldToLocalMatrix);
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
@@ -168,14 +183,13 @@ public class CustomShadows : MonoBehaviour {
     // Refresh the render target if the scale has changed
     void UpdateRenderTexture()
     {
-        if (_target != null && (_target.width != _resolution || _backTarget1.filterMode != _filterMode))
+        if (_target != null && (_target.width != _resolution || _backTarget.filterMode != _filterMode))
             DestroyTargets();
 
         if (_target == null)
         {
             _target = CreateTarget();
-            _backTarget1 = CreateBackTarget();
-            _backTarget2 = CreateBackTarget();
+            _backTarget = CreateBackTarget();
         }
     }
 
@@ -236,12 +250,12 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution, 0, RenderTextureFormat.RFloat);
-        tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
-        tg.volumeDepth = CASCADES;
+        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.RGFloat);
+        //tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
+        //tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;
         tg.wrapMode = TextureWrapMode.Clamp;
-        tg.enableRandomWrite = true;
+        //tg.enableRandomWrite = true;
         //tg.autoGenerateMips = false;
         //tg.useMipMap = true;
         tg.Create();
