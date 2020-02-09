@@ -17,7 +17,7 @@
             #include "UnityCG.cginc"
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile _ HARD_SHADOWS VARIANCE_SHADOWS MOMENT_SHADOWS
+            //#pragma multi_compile _ HARD_SHADOWS VARIANCE_SHADOWS MOMENT_SHADOWS
         
             float4 _Color;
 
@@ -177,11 +177,7 @@
                 float shadowIntensity = 0;
                 float2 samp = UNITY_SAMPLE_TEX2DARRAY(_ShadowTex, float3(uv, cascade));
 
-#ifdef HARD_SHADOWS
-                float sDepth = samp.r;
-                shadowIntensity = step(sDepth, depth - _ShadowTexScale.w);
-#endif
-#ifdef VARIANCE_SHADOWS
+//#ifdef VARIANCE_SHADOWS
 
                 // https://www.gdcvault.com/play/1023808/Rendering-Antialiased-Shadows-with-Moment
                 // https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch08.html
@@ -219,10 +215,7 @@
                 //p_max_inv = 1;  // XXXXXXXXXXXXXX
 
                 shadowIntensity = p_max_inv * p_inv;
-#endif
-#ifdef MOMENT_SHADOWS
-                shadowIntensity = ComputeMSMShadowIntensity(samp, depth);
-#endif
+//#endif
 
                 // COLOR
                 // modulate with lighting

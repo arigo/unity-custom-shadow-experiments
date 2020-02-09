@@ -6,12 +6,12 @@ public class CustomShadows : MonoBehaviour {
 
     const int CASCADES = 6;
 
-    public enum Shadows
+    /*public enum Shadows
     {
         NONE,
         HARD,
         VARIANCE
-    }
+    }*/
 
     [Header("Initialization")]
     [SerializeField]
@@ -98,7 +98,7 @@ public class CustomShadows : MonoBehaviour {
             _backTarget = null;
         }
 
-        ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
+        //ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
     }
 
     private void OnDestroy()
@@ -127,8 +127,8 @@ public class CustomShadows : MonoBehaviour {
 
     void UpdateShaderValues()
     {
-        ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
-        Shader.EnableKeyword(ToKeyword(Shadows.VARIANCE));
+        //ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
+        //Shader.EnableKeyword(ToKeyword(Shadows.VARIANCE));
 
         // Set the qualities of the textures
         Shader.SetGlobalTexture("_ShadowTex", _backTarget);
@@ -240,7 +240,7 @@ public class CustomShadows : MonoBehaviour {
         return tg;
     }
 
-    void ForAllKeywords(System.Action<Shadows> func)
+    /*void ForAllKeywords(System.Action<Shadows> func)
     {
         func(Shadows.HARD);
         func(Shadows.VARIANCE);
@@ -251,7 +251,7 @@ public class CustomShadows : MonoBehaviour {
         if (en == Shadows.HARD) return "HARD_SHADOWS";
         if (en == Shadows.VARIANCE) return "VARIANCE_SHADOWS";
         return "";
-    }
+    }*/
 
 #if false
     // Returns the bounds extents in the provided frame
