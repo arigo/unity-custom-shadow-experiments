@@ -80,21 +80,13 @@ public class CustomShadows : MonoBehaviour {
         UpdateShaderValues();
     }
 
-    // Disable the shadows
-    void OnDisable()
+    void DestroyTargets()
     {
-        if (_shadowCam)
-        {
-            DestroyImmediate(_shadowCam.gameObject);
-            _shadowCam = null;
-        }
-
         if (_target)
         {
             DestroyImmediate(_target);
             _target = null;
         }
-
         if (_backTarget1)
         {
             DestroyImmediate(_backTarget1);
@@ -105,7 +97,17 @@ public class CustomShadows : MonoBehaviour {
             DestroyImmediate(_backTarget2);
             _backTarget2 = null;
         }
+    }
 
+    // Disable the shadows
+    void OnDisable()
+    {
+        if (_shadowCam)
+        {
+            DestroyImmediate(_shadowCam.gameObject);
+            _shadowCam = null;
+        }
+        DestroyTargets();
         //ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
     }
 
@@ -166,11 +168,8 @@ public class CustomShadows : MonoBehaviour {
     // Refresh the render target if the scale has changed
     void UpdateRenderTexture()
     {
-        if (_target != null && (_target.width != _resolution || _target.filterMode!= _filterMode))
-        {
-            DestroyImmediate(_target);
-            _target = null;
-        }
+        if (_target != null && (_target.width != _resolution || _backTarget1.filterMode != _filterMode))
+            DestroyTargets();
 
         if (_target == null)
         {
