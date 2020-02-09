@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 public class CustomShadows : MonoBehaviour {
 
-    const int CASCADES = 8;
+    const int CASCADES = 6;
 
     public enum Shadows
     {
@@ -34,7 +34,8 @@ public class CustomShadows : MonoBehaviour {
     //[Range(0, 1)]
     //public float varianceShadowExpansion = 0.3f;
     [Range(0, 0.1f)]
-    public float deltaExtraDistance = 0.004f;
+    public float deltaExtraDistance = 0.00016f;
+    public float firstCascadeLevelSize = 8.0f;
     //public Shadows _shadowType = Shadows.HARD;
     public FilterMode _filterMode = FilterMode.Bilinear;
 
@@ -53,19 +54,25 @@ public class CustomShadows : MonoBehaviour {
 
         _shadowCam.targetTexture = _target;
 
+        _blur.SetTexture(0, "Result", _backTarget);
+
         for (int lvl = CASCADES; --lvl >= 0; )
         {
-            _shadowCam.orthographicSize = 2.0f * Mathf.Pow(2, lvl);
+            _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
             _shadowCam.RenderWithShader(_depthShader, "");
 
             _blur.SetTexture(0, "Read", _target);
-            _blur.SetTexture(0, "Result", _backTarget);
-            _blur.SetVector("Shift", new Vector2(0, _target.height * lvl));
+            _blur.SetInt("CurrentZ", lvl);
             _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
-        }
 
-        _blur.SetVector("Shift", new Vector2(0, 1f - 0.5f / _target.height));
-        _blur.Dispatch(1, _target.width / 8, 1, 1);
+            if (lvl == CASCADES - 1)
+            {
+                _blur.SetInt("CurrentDimensionMinus1", _target.width - 1);
+                _blur.SetInt("CurrentZ", lvl);
+                _blur.SetTexture(1, "Result", _backTarget);
+                _blur.Dispatch(1, _target.width / 8, 1, 1);
+            }
+        }
 
         UpdateShaderValues();
     }
@@ -158,8 +165,8 @@ public class CustomShadows : MonoBehaviour {
 
         if (_target == null)
         {
-            _target = CreateTarget(false);
-            _backTarget = CreateTarget(true);
+            _target = CreateTarget();
+            _backTarget = CreateBackTarget();
         }
     }
 
@@ -207,24 +214,27 @@ public class CustomShadows : MonoBehaviour {
 
     #region Utilities
     // Creates a rendertarget
-    RenderTexture CreateTarget(bool back)
+    RenderTexture CreateTarget()
     {
-        RenderTexture tg = new RenderTexture(_resolution, _resolution * (back ? CASCADES : 1),
-                                             back ? 0 : 24,
+        RenderTexture tg = new RenderTexture(_resolution, _resolution, 24,
                                              RenderTextureFormat.RGFloat);
-        if (back)
-            tg.filterMode = _filterMode;
         tg.wrapMode = TextureWrapMode.Clamp;
-        if (back)
-            tg.enableRandomWrite = true;
-        else
-            tg.antiAliasing = 8;
+        tg.antiAliasing = 8;
+        tg.Create();
 
-        if (back)
-        {
-            //tg.autoGenerateMips = false;
-            //tg.useMipMap = true;
-        }
+        return tg;
+    }
+
+    RenderTexture CreateBackTarget()
+    {
+        var tg = new RenderTexture(_resolution, _resolution, 0, RenderTextureFormat.RGFloat);
+        tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
+        tg.volumeDepth = CASCADES;
+        tg.filterMode = _filterMode;
+        tg.wrapMode = TextureWrapMode.Clamp;
+        tg.enableRandomWrite = true;
+        //tg.autoGenerateMips = false;
+        //tg.useMipMap = true;
         tg.Create();
 
         return tg;

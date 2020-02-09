@@ -1,32 +1,37 @@
 ﻿#pragma kernel Blur
-#pragma kernel ClearBand
+#pragma kernel ClearBorder
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-Texture2D<float4> Read;
-RWTexture2D<float4> Result;
-float2 Shift;
+Texture2D<float2> Read;
+RWTexture2DArray<float2> Result;
+uint CurrentZ, CurrentDimensionMinus1;
 
 [numthreads(8,8,1)]
 void Blur (uint3 id : SV_DispatchThreadID)
 {
-    float4 col = float4(0, 0, 0, 1);
-    for(int x = -1 ; x <= 1; x ++)
-        for( int y = -1 ; y <= 1 ; y ++)
+    float2 col = float2(0, 0);
+    [unroll] for (int x = -1; x <= 1; x++)
+    {
+        [unroll] for (int y = -1; y <= 1; y++)
         {
             uint2 index = id.xy;
             index.x += x;
             index.y += y;
 
-            col += Read[index.xy]/9;
+            col += Read[index.xy];
         }
-    
-    Result[id.xy + Shift] = col;
+    }
+    id.z = CurrentZ;
+    Result[id] = col / 9;
 }
 
 [numthreads(8, 1, 1)]
-void ClearBand(uint3 id : SV_DispatchThreadID)
+void ClearBorder (uint3 id : SV_DispatchThreadID)
 {
-    float4 col = float4(1, 1, 0, 1);
-    Result[id.xy + Shift] = col;
+    float2 border = float2(1, 1);
+    Result[uint3(id.x, 0, CurrentZ)] = border;
+    Result[uint3(id.x, CurrentDimensionMinus1, CurrentZ)] = border;
+    Result[uint3(0, id.x, CurrentZ)] = border;
+    Result[uint3(CurrentDimensionMinus1, id.x, CurrentZ)] = border;
 }

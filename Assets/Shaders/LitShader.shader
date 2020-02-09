@@ -22,7 +22,7 @@
             float4 _Color;
 
             // Shadow Map info
-            sampler2D _ShadowTex;
+            UNITY_DECLARE_TEX2DARRAY(_ShadowTex);
             float4x4 _LightMatrix;
             float4 _ShadowTexScale;
 
@@ -161,21 +161,21 @@
                 float2 uv = lightSpacePos.xy;
                 uv *= _ShadowTexScale.xy;      /* should be in range [-0.5, 0.5] here */
                 uv += offset;
-                float cascade = 0;
-                const float MAX = 0.49;
+                const float MAX = 0.475;
 
-
+                const int CASCADES = 6;
                 float2 uv_abs = abs(uv);
-                float magnitude = max(uv_abs.x, uv_abs.y) / MAX;
-                cascade = ceil(log2(max(magnitude, 0.75)));   /* an integer >= 0 */
-                uv *= pow(0.5, cascade);
+                float magnitude = max(uv_abs.x, uv_abs.y) * (2 / MAX);
+                int cascade = log2(clamp(magnitude, 1, 1 << (CASCADES - 1)));
+                /* ^^^ an integer between 0 and CASCADES-1 */
+                int cascade_scale = 1 << cascade;
+                uv /= cascade_scale;
 
 
-                uv += float2(0.5, 0.5 + cascade);
+                uv += float2(0.5, 0.5);
 
                 float shadowIntensity = 0;
-                uv.y *= 1. / 8;
-                float4 samp = tex2D(_ShadowTex, uv);
+                float2 samp = UNITY_SAMPLE_TEX2DARRAY(_ShadowTex, float3(uv, cascade));
 
 #ifdef HARD_SHADOWS
                 float sDepth = samp.r;
@@ -201,7 +201,7 @@
                 // calculate our initial probability based on the basic depths
                 // if our depth is closer than x, then the fragment has a 100%
                 // probability of being lit (p=1)
-                float p_inv = depth > (x + _DeltaExtraDistance * pow(2, cascade));
+                float p_inv = depth > (x + _DeltaExtraDistance * cascade_scale);
                 
                 // calculate the upper bound of the probability using Chebyshev's inequality
                 // https://en.wikipedia.org/wiki/Chebyshev%27s_inequality
