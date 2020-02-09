@@ -22,7 +22,8 @@
             float4 _Color;
 
             // Shadow Map info
-            UNITY_DECLARE_TEX2DARRAY(_ShadowTex);
+            UNITY_DECLARE_TEX2DARRAY(_ShadowTex1);
+            UNITY_DECLARE_TEX2DARRAY(_ShadowTex2);
             float4x4 _LightMatrix;
             float4 _ShadowTexScale;
 
@@ -175,7 +176,9 @@
                 uv += float2(0.5, 0.5);
 
                 float shadowIntensity = 0;
-                float2 samp = UNITY_SAMPLE_TEX2DARRAY(_ShadowTex, float3(uv, cascade));
+                float2 samp;
+                samp.r = UNITY_SAMPLE_TEX2DARRAY(_ShadowTex1, float3(uv, cascade));
+                samp.g = UNITY_SAMPLE_TEX2DARRAY(_ShadowTex2, float3(uv, cascade));
 
 //#ifdef VARIANCE_SHADOWS
 

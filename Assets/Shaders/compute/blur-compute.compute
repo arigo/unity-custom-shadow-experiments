@@ -4,7 +4,8 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 Texture2D<float2> Read;
-RWTexture2DArray<float2> Result;
+RWTexture2DArray<float> Result1;
+RWTexture2DArray<float> Result2;
 uint CurrentZ, CurrentDimensionMinus1;
 
 [numthreads(8,8,1)]
@@ -22,16 +23,23 @@ void Blur (uint3 id : SV_DispatchThreadID)
             col += Read[index.xy];
         }
     }
+    col /= 9;
     id.z = CurrentZ;
-    Result[id] = col / 9;
+    Result1[id] = col.x;
+    Result2[id] = col.y;
 }
 
 [numthreads(8, 1, 1)]
 void ClearBorder (uint3 id : SV_DispatchThreadID)
 {
-    float2 border = float2(1, 1);
-    Result[uint3(id.x, 0, CurrentZ)] = border;
-    Result[uint3(id.x, CurrentDimensionMinus1, CurrentZ)] = border;
-    Result[uint3(0, id.x, CurrentZ)] = border;
-    Result[uint3(CurrentDimensionMinus1, id.x, CurrentZ)] = border;
+    const float border1 = 1;
+    const float border2 = 1;
+    Result1[uint3(id.x, 0, CurrentZ)] = border1;
+    Result2[uint3(id.x, 0, CurrentZ)] = border2;
+    Result1[uint3(id.x, CurrentDimensionMinus1, CurrentZ)] = border1;
+    Result2[uint3(id.x, CurrentDimensionMinus1, CurrentZ)] = border2;
+    Result1[uint3(0, id.x, CurrentZ)] = border1;
+    Result2[uint3(0, id.x, CurrentZ)] = border2;
+    Result1[uint3(CurrentDimensionMinus1, id.x, CurrentZ)] = border1;
+    Result2[uint3(CurrentDimensionMinus1, id.x, CurrentZ)] = border2;
 }

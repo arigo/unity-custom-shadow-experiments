@@ -41,7 +41,8 @@ public class CustomShadows : MonoBehaviour {
 
     // Render Targets
     Camera _shadowCam;
-    public RenderTexture _backTarget;  // view only in the inspector in game mode
+    public RenderTexture _backTarget1; // view only in the inspector in game mode
+    public RenderTexture _backTarget2; // view only in the inspector in game mode
     public RenderTexture _target;      // view only in the inspector in game mode
 
     #region LifeCycle
@@ -54,7 +55,8 @@ public class CustomShadows : MonoBehaviour {
 
         _shadowCam.targetTexture = _target;
 
-        _blur.SetTexture(0, "Result", _backTarget);
+        _blur.SetTexture(0, "Result1", _backTarget1);
+        _blur.SetTexture(0, "Result2", _backTarget2);
 
         for (int lvl = CASCADES; --lvl >= 0; )
         {
@@ -69,7 +71,8 @@ public class CustomShadows : MonoBehaviour {
             {
                 _blur.SetInt("CurrentDimensionMinus1", _target.width - 1);
                 _blur.SetInt("CurrentZ", lvl);
-                _blur.SetTexture(1, "Result", _backTarget);
+                _blur.SetTexture(1, "Result1", _backTarget1);
+                _blur.SetTexture(1, "Result2", _backTarget2);
                 _blur.Dispatch(1, _target.width / 8, 1, 1);
             }
         }
@@ -92,10 +95,15 @@ public class CustomShadows : MonoBehaviour {
             _target = null;
         }
 
-        if (_backTarget)
+        if (_backTarget1)
         {
-            DestroyImmediate(_backTarget);
-            _backTarget = null;
+            DestroyImmediate(_backTarget1);
+            _backTarget1 = null;
+        }
+        if (_backTarget2)
+        {
+            DestroyImmediate(_backTarget2);
+            _backTarget2 = null;
         }
 
         //ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
@@ -131,7 +139,8 @@ public class CustomShadows : MonoBehaviour {
         //Shader.EnableKeyword(ToKeyword(Shadows.VARIANCE));
 
         // Set the qualities of the textures
-        Shader.SetGlobalTexture("_ShadowTex", _backTarget);
+        Shader.SetGlobalTexture("_ShadowTex1", _backTarget1);
+        Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
         Shader.SetGlobalMatrix("_LightMatrix", _shadowCam.transform.worldToLocalMatrix);
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
@@ -166,7 +175,8 @@ public class CustomShadows : MonoBehaviour {
         if (_target == null)
         {
             _target = CreateTarget();
-            _backTarget = CreateBackTarget();
+            _backTarget1 = CreateBackTarget();
+            _backTarget2 = CreateBackTarget();
         }
     }
 
@@ -227,7 +237,7 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution, 0, RenderTextureFormat.RGFloat);
+        var tg = new RenderTexture(_resolution, _resolution, 0, RenderTextureFormat.RFloat);
         tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;
