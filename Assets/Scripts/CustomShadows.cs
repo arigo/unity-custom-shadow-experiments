@@ -87,6 +87,7 @@ public class CustomShadows : MonoBehaviour {
 
         for (int lvl = CASCADES; --lvl >= 0;)
         {
+            Shader.SetGlobalFloat("SShadowCascade", 1 << (CASCADES - 1 - lvl));
             _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
             _shadowCam.RenderWithShader(_depthShader, "");
 
@@ -179,7 +180,7 @@ public class CustomShadows : MonoBehaviour {
         _shadowCam.orthographic = true;
         _shadowCam.nearClipPlane = 0;
         _shadowCam.enabled = false;
-        _shadowCam.backgroundColor = new Color(1, 1, 0, 0); // new Color(0, 0.05f, 0, 0);
+        _shadowCam.backgroundColor = new Color(1 << (CASCADES - 1), 1 << (CASCADES - 1), 0, 1); //new Color(1, 1, 0, 0); // new Color(0, 0.05f, 0, 0);
         _shadowCam.clearFlags = CameraClearFlags.SolidColor;
     }
 
@@ -230,7 +231,7 @@ public class CustomShadows : MonoBehaviour {
     void UpdateShadowCameraPos()
     {
         Camera cam = _shadowCam;
-        float Z_DISTANCE = 100;// cam.orthographicSize;
+        float Z_DISTANCE = firstCascadeLevelSize * 0.5f * Mathf.Pow(2, CASCADES-1);   //cam.orthographicSize;
 
         Light l = FindObjectOfType<Light>();
         cam.transform.position = l.transform.position - l.transform.forward * Z_DISTANCE;
@@ -275,8 +276,7 @@ public class CustomShadows : MonoBehaviour {
     RenderTexture CreateTarget()
     {
         RenderTexture tg = new RenderTexture(_resolution, _resolution, 24,
-                                             RenderTextureFormat.ARGB32);
-        tg.graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_UNorm;
+                                             RenderTextureFormat.RHalf);
         tg.wrapMode = TextureWrapMode.Clamp;
         tg.antiAliasing = 8;
         tg.Create();
@@ -286,8 +286,7 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.ARGBHalf);
-        tg.graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_UNorm;
+        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.RHalf);
         //tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         //tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;
