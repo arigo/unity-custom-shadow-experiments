@@ -48,9 +48,9 @@
 
                 // sample the texture
                 float col = 0;
-                [unroll] for (int x = -1; x <= 1; x++)
+                [unroll] for (int x = -1; x <= 1; x++)  /*int x = 0;*/
                 {
-                    [unroll] for (int y = -1; y <= 1; y++)
+                    [unroll] for (int y = -1; y <= 1; y++)  /*int y = 0;*/
                     {
                         float2 index = i.uv;
                         index += BlurPixelSize * float2(x, y);

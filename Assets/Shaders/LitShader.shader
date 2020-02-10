@@ -164,12 +164,12 @@
                 uv += offset;
                 const float MAX = 0.475;
 
-                const int CASCADES = 5;
+                const float CASCADES = 5;
                 float2 uv_abs = abs(uv);
                 float magnitude = max(uv_abs.x, uv_abs.y) * (2 / MAX);
-                int cascade = log2(max(magnitude, 1));
+                float cascade = floor(log2(max(magnitude, 1)));
                 /* ^^^ an integer at least 0 */
-                int cascade_scale = 1 << cascade;
+                float cascade_scale = exp2(cascade);
                 uv /= cascade_scale;
 
 

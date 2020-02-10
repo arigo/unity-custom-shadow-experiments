@@ -99,9 +99,9 @@ public class CustomShadows : MonoBehaviour {
             CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
         }
 
-        _blur_material.EnableKeyword("BLUR_NOTHING");
+        /*_blur_material.EnableKeyword("BLUR_NOTHING");
         CustomBlit(_target, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
-        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
+        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);*/
 
         UpdateShaderValues();
     }
@@ -275,7 +275,8 @@ public class CustomShadows : MonoBehaviour {
     RenderTexture CreateTarget()
     {
         RenderTexture tg = new RenderTexture(_resolution, _resolution, 24,
-                                             RenderTextureFormat.ARGBFloat);
+                                             RenderTextureFormat.ARGB32);
+        tg.graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_UNorm;
         tg.wrapMode = TextureWrapMode.Clamp;
         tg.antiAliasing = 8;
         tg.Create();
@@ -285,7 +286,8 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.ARGBFloat);
+        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.ARGBHalf);
+        tg.graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_UNorm;
         //tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         //tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;
