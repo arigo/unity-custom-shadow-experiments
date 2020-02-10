@@ -18,7 +18,6 @@
             #pragma vertex vert
             #pragma fragment frag
             //#pragma multi_compile _ HARD_SHADOWS VARIANCE_SHADOWS MOMENT_SHADOWS
-            #include "./encdec.cginc"
         
             float4 _Color;
 
@@ -164,12 +163,12 @@
                 uv += offset;
                 const float MAX = 0.475;
 
-                const float CASCADES = 5;
+                const int CASCADES = 5;
                 float2 uv_abs = abs(uv);
                 float magnitude = max(uv_abs.x, uv_abs.y) * (2 / MAX);
-                float cascade = floor(log2(max(magnitude, 1)));
+                int cascade = log2(max(magnitude, 1));
                 /* ^^^ an integer at least 0 */
-                float cascade_scale = exp2(cascade);
+                int cascade_scale = 1 << cascade;
                 uv /= cascade_scale;
 
 
@@ -177,16 +176,16 @@
                 uv.y /= CASCADES;
 
                 float shadowIntensity = 0;
-                float2 s = float2(
-                    DecodeFromARGB(tex2D(_ShadowTex1, uv)),
-                    DecodeFromARGB(tex2D(_ShadowTex2, uv)));
-
+                float2 samp = float2(tex2D(_ShadowTex1, uv).r, tex2D(_ShadowTex2, uv).r);
+                //samp *= cascade_scale;
+                //samp.g *= cascade_scale;
 
 //#ifdef VARIANCE_SHADOWS
 
                 // https://www.gdcvault.com/play/1023808/Rendering-Antialiased-Shadows-with-Moment
                 // https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch08.html
-                // The moments of the fragment live in "_shadowTex", decoded to 's'
+                // The moments of the fragment live in "_shadowTex"
+                float2 s = samp.rg;
 
                 // average / expected depth and depth^2 across the texels
                 // E(x) and E(x^2)

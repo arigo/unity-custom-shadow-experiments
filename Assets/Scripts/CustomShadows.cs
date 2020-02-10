@@ -92,16 +92,17 @@ public class CustomShadows : MonoBehaviour {
 
             float y1 = lvl / (float)CASCADES;
             float y2 = (lvl + 1) / (float)CASCADES;
-            _blur_material.EnableKeyword("BLUR_LINEAR_PART");
+            _blur_material.DisableKeyword("BLUR_SQUARES");
             CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
 
-            _blur_material.DisableKeyword("BLUR_LINEAR_PART");
+            _blur_material.EnableKeyword("BLUR_SQUARES");
             CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
         }
 
-        /*_blur_material.EnableKeyword("BLUR_NOTHING");
+        _blur_material.DisableKeyword("BLUR_SQUARES");
+        _blur_material.EnableKeyword("BLUR_NOTHING");
         CustomBlit(_target, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
-        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);*/
+        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
 
         UpdateShaderValues();
     }
@@ -275,8 +276,7 @@ public class CustomShadows : MonoBehaviour {
     RenderTexture CreateTarget()
     {
         RenderTexture tg = new RenderTexture(_resolution, _resolution, 24,
-                                             RenderTextureFormat.ARGB32);
-        tg.graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_UNorm;
+                                             RenderTextureFormat.RFloat);
         tg.wrapMode = TextureWrapMode.Clamp;
         tg.antiAliasing = 8;
         tg.Create();
@@ -286,8 +286,7 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.ARGBHalf);
-        tg.graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_UNorm;
+        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.RFloat);
         //tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         //tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;
