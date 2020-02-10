@@ -13,6 +13,7 @@
             CGPROGRAM
             #include "UnityCG.cginc"
             #include "../Addons/Dither Functions.cginc"
+            #include "./encdec.cginc"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile _ DRAW_TRANSPARENT_SHADOWS
@@ -54,9 +55,7 @@
                 depth = 1 - depth;
 #endif
 
-                float limited_precision_depth = f16tof32(f32tof16(depth));
-                float correction = depth - limited_precision_depth;
-                return float4(limited_precision_depth, correction, 0, 0);
+                return EncodeToARGB(depth);
             }
             ENDCG
         }
