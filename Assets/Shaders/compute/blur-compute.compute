@@ -1,12 +1,12 @@
 ﻿#pragma kernel Blur
-#pragma kernel ClearBorder
+/*#pragma kernel ClearBorder*/
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-Texture2D<float2> Read;
-RWTexture2DArray<float> Result1;
-RWTexture2DArray<float> Result2;
-uint CurrentZ, CurrentDimensionMinus1;
+Texture2D<float> Read;
+RWTexture2D<float> Result1;
+RWTexture2D<float> Result2;
+uint CurrentY;
 
 [numthreads(8,8,1)]
 void Blur (uint3 id : SV_DispatchThreadID)
@@ -20,16 +20,17 @@ void Blur (uint3 id : SV_DispatchThreadID)
             index.x += x;
             index.y += y;
 
-            col += Read[index.xy];
+            float input = Read[index.xy];
+            col += float2(input, input * input);
         }
     }
     col /= 9;
-    id.z = CurrentZ;
-    Result1[id] = col.x;
-    Result2[id] = col.y;
+    id.y += CurrentY;
+    Result1[id.xy] = col.x;
+    Result2[id.xy] = col.y;
 }
 
-[numthreads(8, 1, 1)]
+/*[numthreads(8, 1, 1)]
 void ClearBorder (uint3 id : SV_DispatchThreadID)
 {
     const float border1 = 1;
@@ -42,4 +43,4 @@ void ClearBorder (uint3 id : SV_DispatchThreadID)
     Result2[uint3(0, id.x, CurrentZ)] = border2;
     Result1[uint3(CurrentDimensionMinus1, id.x, CurrentZ)] = border1;
     Result2[uint3(CurrentDimensionMinus1, id.x, CurrentZ)] = border2;
-}
+}*/

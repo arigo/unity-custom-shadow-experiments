@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 public class CustomShadows : MonoBehaviour {
 
-    const int CASCADES = 6;
+    const int CASCADES = 5;
 
     /*public enum Shadows
     {
@@ -41,16 +41,19 @@ public class CustomShadows : MonoBehaviour {
 
     // Render Targets
     Camera _shadowCam;
-    public RenderTexture _backTarget;  // view only in the inspector in game mode
+    public RenderTexture _backTarget1; // view only in the inspector in game mode
+    public RenderTexture _backTarget2; // view only in the inspector in game mode
     public RenderTexture _target;      // view only in the inspector in game mode
+    public Shader blurShader;
+    Material _blur_material;
 
     #region LifeCycle
     void Update ()
     {
         _depthShader = _depthShader ? _depthShader : Shader.Find("Hidden/CustomShadows/Depth");
         SetUpShadowCam();
-        UpdateRenderTexture();
         UpdateShadowCameraPos();
+        UpdateRenderTexture();
 
         _shadowCam.targetTexture = _target;
 
@@ -76,29 +79,54 @@ public class CustomShadows : MonoBehaviour {
             }
         }*/
 
+
+        if (_blur_material == null)
+            _blur_material = new Material(blurShader);
+        _blur_material.SetVector("BlurPixelSize", new Vector2(1f / _target.width, 1f / _target.height));
+        _blur_material.DisableKeyword("BLUR_NOTHING");
+
         for (int lvl = CASCADES; --lvl >= 0;)
         {
             _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
             _shadowCam.RenderWithShader(_depthShader, "");
 
-            Graphics.CopyTexture(_target, 0, 0, 0, 0, _target.width, _target.height,
-                                 _backTarget, 0, 0, 0, lvl * _target.height);
+            float y1 = lvl / (float)CASCADES;
+            float y2 = (lvl + 1) / (float)CASCADES;
+            _blur_material.DisableKeyword("BLUR_SQUARES");
+            CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
 
-            /*_blur.SetTexture(0, "Read", _target);
-            _blur.SetInt("CurrentZ", lvl);
-            _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
-
-            if (lvl == CASCADES - 1)
-            {
-                _blur.SetInt("CurrentDimensionMinus1", _target.width - 1);
-                _blur.SetInt("CurrentZ", lvl);
-                _blur.SetTexture(1, "Result1", _backTarget1);
-                _blur.SetTexture(1, "Result2", _backTarget2);
-                _blur.Dispatch(1, _target.width / 8, 1, 1);
-            }*/
+            _blur_material.EnableKeyword("BLUR_SQUARES");
+            CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
         }
 
+        _blur_material.DisableKeyword("BLUR_SQUARES");
+        _blur_material.EnableKeyword("BLUR_NOTHING");
+        CustomBlit(_target, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
+        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
+
         UpdateShaderValues();
+    }
+
+    static void CustomBlit(Texture source, RenderTexture target, Material mat, float y1, float y2)
+    {
+        var original = RenderTexture.active;
+        RenderTexture.active = target;
+
+        // Set the '_MainTex' variable to the texture given by 'source'
+        mat.SetTexture("_MainTex", source);
+        GL.PushMatrix();
+        GL.LoadOrtho();
+        // activate the first shader pass (in this case we know it is the only pass)
+        mat.SetPass(0);
+
+        GL.Begin(GL.QUADS);
+        GL.TexCoord2(0f, 0f); GL.Vertex3(0f, y1, 0f);
+        GL.TexCoord2(0f, 1f); GL.Vertex3(0f, y2, 0f);
+        GL.TexCoord2(1f, 1f); GL.Vertex3(1f, y2, 0f);
+        GL.TexCoord2(1f, 0f); GL.Vertex3(1f, y1, 0f);
+        GL.End();
+        GL.PopMatrix();
+        RenderTexture.active = original;
     }
 
     void DestroyTargets()
@@ -108,10 +136,15 @@ public class CustomShadows : MonoBehaviour {
             DestroyImmediate(_target);
             _target = null;
         }
-        if (_backTarget)
+        if (_backTarget1)
         {
-            DestroyImmediate(_backTarget);
-            _backTarget = null;
+            DestroyImmediate(_backTarget1);
+            _backTarget1 = null;
+        }
+        if (_backTarget2)
+        {
+            DestroyImmediate(_backTarget2);
+            _backTarget2 = null;
         }
     }
 
@@ -157,7 +190,8 @@ public class CustomShadows : MonoBehaviour {
         //Shader.EnableKeyword(ToKeyword(Shadows.VARIANCE));
 
         // Set the qualities of the textures
-        Shader.SetGlobalTexture("_ShadowTex", _backTarget);
+        Shader.SetGlobalTexture("_ShadowTex1", _backTarget1);
+        Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
         Shader.SetGlobalMatrix("_LightMatrix", _shadowCam.transform.worldToLocalMatrix);
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
@@ -183,27 +217,29 @@ public class CustomShadows : MonoBehaviour {
     // Refresh the render target if the scale has changed
     void UpdateRenderTexture()
     {
-        if (_target != null && (_target.width != _resolution || _backTarget.filterMode != _filterMode))
+        if (_target != null && (_target.width != _resolution || _backTarget1.filterMode != _filterMode))
             DestroyTargets();
 
         if (_target == null)
         {
             _target = CreateTarget();
-            _backTarget = CreateBackTarget();
+            _backTarget1 = CreateBackTarget();
+            _backTarget2 = CreateBackTarget();
         }
     }
 
     void UpdateShadowCameraPos()
     {
-        const float Z_DISTANCE = 100;
-
         Camera cam = _shadowCam;
+        float Z_DISTANCE = 100;// cam.orthographicSize;
+
         Light l = FindObjectOfType<Light>();
         cam.transform.position = l.transform.position - l.transform.forward * Z_DISTANCE;
         cam.transform.rotation = l.transform.rotation;
         cam.transform.LookAt(cam.transform.position + cam.transform.forward, cam.transform.up);
 
-        cam.farClipPlane = 2 * Z_DISTANCE;
+        cam.nearClipPlane = 0;
+        cam.farClipPlane = 2*Z_DISTANCE;
         cam.aspect = 1;
     }
 
@@ -240,7 +276,7 @@ public class CustomShadows : MonoBehaviour {
     RenderTexture CreateTarget()
     {
         RenderTexture tg = new RenderTexture(_resolution, _resolution, 24,
-                                             RenderTextureFormat.RGFloat);
+                                             RenderTextureFormat.RFloat);
         tg.wrapMode = TextureWrapMode.Clamp;
         tg.antiAliasing = 8;
         tg.Create();
@@ -250,7 +286,7 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.RGFloat);
+        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.RFloat);
         //tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         //tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;

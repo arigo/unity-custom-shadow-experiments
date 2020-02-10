@@ -22,7 +22,7 @@
             float4 _Color;
 
             // Shadow Map info
-            sampler _ShadowTex;
+            sampler _ShadowTex1, _ShadowTex2;
             float4x4 _LightMatrix;
             float4 _ShadowTexScale;
 
@@ -163,7 +163,7 @@
                 uv += offset;
                 const float MAX = 0.475;
 
-                const int CASCADES = 6;
+                const int CASCADES = 5;
                 float2 uv_abs = abs(uv);
                 float magnitude = max(uv_abs.x, uv_abs.y) * (2 / MAX);
                 int cascade = log2(max(magnitude, 1));
@@ -176,7 +176,9 @@
                 uv.y /= CASCADES;
 
                 float shadowIntensity = 0;
-                float2 samp = tex2D(_ShadowTex, uv);
+                float2 samp = float2(tex2D(_ShadowTex1, uv).r, tex2D(_ShadowTex2, uv).r);
+                //samp *= cascade_scale;
+                //samp.g *= cascade_scale;
 
 //#ifdef VARIANCE_SHADOWS
 

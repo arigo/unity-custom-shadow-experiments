@@ -40,7 +40,7 @@
                 return o;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            float4 frag(v2f i) : SV_Target
             {
                 float4 col = _Color;
                 #if defined(DRAW_TRANSPARENT_SHADOWS)
@@ -49,9 +49,11 @@
                 if (col.a < 0.5) discard;
                 #endif
 
-                // TODO: Understand why depth is reversed
-                float depth = 1 - i.vertex.z;
-                return float4(depth, depth * depth, 0, 0);
+                float depth = i.vertex.z;
+#ifdef SHADER_API_D3D11
+                depth = 1 - depth;
+#endif
+                return float4(depth, 0, 0, 0);
             }
             ENDCG
         }
