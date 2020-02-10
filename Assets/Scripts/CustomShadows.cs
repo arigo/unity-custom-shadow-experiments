@@ -42,7 +42,7 @@ public class CustomShadows : MonoBehaviour {
     // Render Targets
     Camera _shadowCam;
     public RenderTexture _backTarget1; // view only in the inspector in game mode
-    public RenderTexture _backTarget2; // view only in the inspector in game mode
+    //public RenderTexture _backTarget2; // view only in the inspector in game mode
     public RenderTexture _target;      // view only in the inspector in game mode
     public Shader blurShader;
     Material _blur_material;
@@ -92,17 +92,17 @@ public class CustomShadows : MonoBehaviour {
 
             float y1 = lvl / (float)CASCADES;
             float y2 = (lvl + 1) / (float)CASCADES;
-            _blur_material.DisableKeyword("BLUR_SQUARES");
+            //_blur_material.DisableKeyword("BLUR_SQUARES");
             CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
 
-            _blur_material.EnableKeyword("BLUR_SQUARES");
-            CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
+            //_blur_material.EnableKeyword("BLUR_SQUARES");
+            //CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
         }
 
-        _blur_material.DisableKeyword("BLUR_SQUARES");
+        //_blur_material.DisableKeyword("BLUR_SQUARES");
         _blur_material.EnableKeyword("BLUR_NOTHING");
         CustomBlit(_target, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
-        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
+        //CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
 
         UpdateShaderValues();
     }
@@ -141,11 +141,11 @@ public class CustomShadows : MonoBehaviour {
             DestroyImmediate(_backTarget1);
             _backTarget1 = null;
         }
-        if (_backTarget2)
+        /*if (_backTarget2)
         {
             DestroyImmediate(_backTarget2);
             _backTarget2 = null;
-        }
+        }*/
     }
 
     // Disable the shadows
@@ -191,7 +191,7 @@ public class CustomShadows : MonoBehaviour {
 
         // Set the qualities of the textures
         Shader.SetGlobalTexture("_ShadowTex1", _backTarget1);
-        Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
+        //Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
         Shader.SetGlobalMatrix("_LightMatrix", _shadowCam.transform.worldToLocalMatrix);
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
@@ -224,7 +224,7 @@ public class CustomShadows : MonoBehaviour {
         {
             _target = CreateTarget();
             _backTarget1 = CreateBackTarget();
-            _backTarget2 = CreateBackTarget();
+            //_backTarget2 = CreateBackTarget();
         }
     }
 
@@ -276,7 +276,7 @@ public class CustomShadows : MonoBehaviour {
     RenderTexture CreateTarget()
     {
         RenderTexture tg = new RenderTexture(_resolution, _resolution, 24,
-                                             RenderTextureFormat.RFloat);
+                                             RenderTextureFormat.RGHalf);
         tg.wrapMode = TextureWrapMode.Clamp;
         tg.antiAliasing = 8;
         tg.Create();
@@ -286,7 +286,7 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.RFloat);
+        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.ARGBHalf);
         //tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         //tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;

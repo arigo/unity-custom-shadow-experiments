@@ -53,7 +53,10 @@
 #ifdef SHADER_API_D3D11
                 depth = 1 - depth;
 #endif
-                return float4(depth, 0, 0, 0);
+
+                float limited_precision_depth = f16tof32(f32tof16(depth));
+                float correction = depth - limited_precision_depth;
+                return float4(limited_precision_depth, correction, 0, 0);
             }
             ENDCG
         }

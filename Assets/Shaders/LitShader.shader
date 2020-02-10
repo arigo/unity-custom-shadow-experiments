@@ -176,7 +176,9 @@
                 uv.y /= CASCADES;
 
                 float shadowIntensity = 0;
-                float2 samp = float2(tex2D(_ShadowTex1, uv).r, tex2D(_ShadowTex2, uv).r);
+                float4 samp = tex2D(_ShadowTex1, uv);
+                samp.r += samp.b;
+                samp.g += samp.a;
                 //samp *= cascade_scale;
                 //samp.g *= cascade_scale;
 
