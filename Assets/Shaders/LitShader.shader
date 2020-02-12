@@ -177,7 +177,7 @@
 
                 float shadowIntensity = 0;
                 float2 s = float2(tex2D(_ShadowTex1, uv).r, tex2D(_ShadowTex2, uv).r);
-                depth = (depth - 0.5) * exp2(CASCADES - 1 - cascade) + 0.5;
+                //depth *= exp2(CASCADES - 1 - cascade);
 
 
 //#ifdef VARIANCE_SHADOWS

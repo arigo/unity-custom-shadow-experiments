@@ -52,11 +52,11 @@
 
                 float depth = i.vertex.z;
 #ifdef SHADER_API_D3D11
-                depth = 1 - depth;
+                depth = 0.5 - depth;
+#else
+                depth = depth - 0.5;
 #endif
-                depth = (depth - 0.5f) * SShadowCascade + 0.5f;
-
-                return float4(depth, 0, 0, 1);
+                return float4(depth * 128, 0, 0, 1);
             }
             ENDCG
         }

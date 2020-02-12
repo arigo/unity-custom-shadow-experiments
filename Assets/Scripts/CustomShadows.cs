@@ -36,6 +36,7 @@ public class CustomShadows : MonoBehaviour {
     [Range(0, 0.1f)]
     public float deltaExtraDistance = 0.00016f;
     public float firstCascadeLevelSize = 8.0f;
+    public float depthOfShadowRange = 100.0f;
     //public Shadows _shadowType = Shadows.HARD;
     public FilterMode _filterMode = FilterMode.Bilinear;
 
@@ -87,7 +88,21 @@ public class CustomShadows : MonoBehaviour {
 
         for (int lvl = CASCADES; --lvl >= 0;)
         {
-            Shader.SetGlobalFloat("SShadowCascade", 1 << (CASCADES - 1 - lvl));
+#if false
+            float sshadowcascade = 1 << (CASCADES - 1 - lvl);
+            Vector2 ss;      /* depth = depth * ss.x + ss.y; */
+            if (SystemInfo.usesReversedZBuffer)
+            {
+                /* we want: depth = ((1 - depth) - 0.5) * 2 * sshadowcascade */
+                ss = new Vector2(-2 * sshadowcascade, sshadowcascade);
+            }
+            else
+            {
+                /* we want: depth = (depth - 0.5) * 2 * sshadowcascade */
+                ss = new Vector2(2 * sshadowcascade, -sshadowcascade);
+            }
+            Shader.SetGlobalVector("SShadowCascade", ss);
+#endif
             _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
             _shadowCam.RenderWithShader(_depthShader, "");
 
@@ -164,9 +179,9 @@ public class CustomShadows : MonoBehaviour {
     {
         OnDisable();
     }
-    #endregion
+#endregion
 
-    #region Update Functions
+#region Update Functions
     void SetUpShadowCam()
     {
         if (_shadowCam) return;
@@ -205,12 +220,12 @@ public class CustomShadows : MonoBehaviour {
         Vector4 size = Vector4.zero;
         size.y = _shadowCam.orthographicSize * 2;
         size.x = _shadowCam.aspect * size.y;
-        size.z = _shadowCam.farClipPlane;
+        size.z = _shadowCam.farClipPlane - _shadowCam.nearClipPlane;
         size.w = 1.0f / _resolution;
 
         size.x = 1f / size.x;
         size.y = 1f / size.y;
-        size.z = 1f / size.z;
+        size.z = 128f / size.z;
         Shader.SetGlobalVector("_ShadowTexScale", size);
     }
 
@@ -231,15 +246,17 @@ public class CustomShadows : MonoBehaviour {
     void UpdateShadowCameraPos()
     {
         Camera cam = _shadowCam;
-        float Z_DISTANCE = firstCascadeLevelSize * 0.5f * Mathf.Pow(2, CASCADES-1);   //cam.orthographicSize;
 
         Light l = FindObjectOfType<Light>();
-        cam.transform.position = l.transform.position - l.transform.forward * Z_DISTANCE;
+        cam.transform.position = l.transform.position;
         cam.transform.rotation = l.transform.rotation;
         cam.transform.LookAt(cam.transform.position + cam.transform.forward, cam.transform.up);
 
-        cam.nearClipPlane = 0;
-        cam.farClipPlane = 2*Z_DISTANCE;
+        /* Set up the clip planes so that we store depth values in the range [-0.5, 0.5],
+         * with values near zero being near us even if depthOfShadowRange is very large.
+         * This maximizes the precision in the RHalf textures near us. */
+        cam.nearClipPlane = -depthOfShadowRange;
+        cam.farClipPlane = depthOfShadowRange;
         cam.aspect = 1;
     }
 
@@ -269,9 +286,9 @@ public class CustomShadows : MonoBehaviour {
         cam.orthographicSize = extents.y / 2;
     }
 #endif
-    #endregion
+#endregion
 
-    #region Utilities
+#region Utilities
     // Creates a rendertarget
     RenderTexture CreateTarget()
     {
@@ -368,5 +385,5 @@ public class CustomShadows : MonoBehaviour {
         b = temp;
     }
 #endif
-    #endregion
+#endregion
 }
