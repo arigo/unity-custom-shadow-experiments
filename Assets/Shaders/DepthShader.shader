@@ -51,7 +51,7 @@
                 #endif
 
                 float depth = i.vertex.z;
-#ifdef SHADER_API_D3D11
+#ifdef UNITY_REVERSED_Z
                 depth = 0.5 - depth;
 #else
                 depth = depth - 0.5;
