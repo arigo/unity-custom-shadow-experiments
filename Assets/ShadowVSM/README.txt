@@ -19,6 +19,14 @@ replacing the default shadows.  Notable improvements:
 Limitations: it works only in the traditional pipeline (not HDRP/LDRP), and was only
 tested in the forward rendering mode.
 
+Demo: see the scene in the Assets/Demo/ directory.  You can see the kind of shadows we
+get and how they are getting more and more fuzzy and less detailed when we look far from
+the origin.  The high-resolution center of the shadows is (by default) at the Light
+position.  In real usage you'll have to move, but not rotate, the directional Light
+gameobject along with the camera so that the high-res center remains where we are (or use
+explicitly another transform in the "Manual from script" computation mode, see below).
+
+
 How to use:
 
 (1) Likely, you want to completely disable the built-in shadows in Unity.
@@ -31,6 +39,7 @@ How to use:
     receive shadows (see the "ShadowVSM/Shaders" folder, or the "ShadowVSM" section in
     the list of shader names).
 
+
 By default all objects with "RenderType" = "Opaque" should cast shadows.  See the
 "Limit shadow casters" options in the ShadowVSM prefab.
 
@@ -39,3 +48,14 @@ need to be recomputed every frame.  "Automatic Incremental Cascade" will recompu
 incrementally over N frames, where N is the number of cascades (set below).  Or,
 "Manual from script" means it will only recompute when you call the methods
 ShadowVSM.UpdateShadowsFull() or ShadowVSM.UpdateShadowsIncrementalCascade().
+
+Note how even with a low resolution of 512x512, the shadowmap displays not too badly.
+You can choose to increase this resolution to improve it further.
+
+Shadow cascades are in powers of two.  They are concentric boxes centered (by default)
+on the directional light of the scene, each one twice as big as the previous one.  Note
+that traditionally we'd make boxes starting at the camera and looking forward only;
+indeed it is wasteful to compute shadowmaps for parts of the world that are not
+displayed.  The idea was for me to use this in the computation mode "manual from
+script", computing shadows independently from the actual camera position and reusing
+them however the camera moves.
