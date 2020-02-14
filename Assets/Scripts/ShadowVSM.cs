@@ -27,7 +27,7 @@ public class ShadowVSM : MonoBehaviour
     public bool drawTransparent = true;
     public int numCascades = 6;
 
-    public float deltaExtraDistance = 0.0024f;
+    public float deltaExtraDistance = 0.003f;
     public float firstCascadeLevelSize = 8.0f;
     public float depthOfShadowRange = 1000.0f;
     public FilterMode _filterMode = FilterMode.Bilinear;
@@ -300,7 +300,7 @@ public class ShadowVSM : MonoBehaviour
 
         var mat = _shadowCam.transform.worldToLocalMatrix;
         Shader.SetGlobalMatrix("_LightMatrix", Matrix4x4.Scale(size) * mat);
-        Shader.SetGlobalMatrix("_LightMatrixNormal", Matrix4x4.Scale(Vector3.one / _resolution) * mat);
+        Shader.SetGlobalMatrix("_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _resolution) * mat);
     }
 
     // Refresh the render target if the scale has changed
