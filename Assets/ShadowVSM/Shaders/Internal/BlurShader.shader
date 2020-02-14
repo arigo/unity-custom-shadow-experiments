@@ -1,4 +1,4 @@
-﻿Shader "Unlit/BlurShader"
+﻿Shader "Hidden/ShadowVSM/BlurShader"
 {
     Properties
     {

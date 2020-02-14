@@ -24,25 +24,25 @@ public class ShadowVSM : MonoBehaviour
     public int _resolution = 512;
 
     [Header("Shadow Settings")]
-    public bool drawTransparent = true;
     public int numCascades = 6;
 
     public float deltaExtraDistance = 0.003f;
     public float firstCascadeLevelSize = 8.0f;
     public float depthOfShadowRange = 1000.0f;
     public FilterMode _filterMode = FilterMode.Bilinear;
+    public bool useDitheringForTransparent = false;
 
+    [Header("Limit shadow casters")]
+    public LayerMask cullingMask = -1;
+    public bool onlyOpaqueCasters = true;
+
+    [Header("Debugging")]
     // Render Targets
-    Camera _shadowCam;
     public RenderTexture _backTarget1; // debugging, see the inspector
     public RenderTexture _backTarget2; // debugging, see the inspector
     public RenderTexture _target;      // debugging, see the inspector
 
-
-    public void UpdateShadowTargets()
-    {
-
-    }
+    Camera _shadowCam;
 
 
     #region LifeCycle
@@ -103,7 +103,7 @@ public class ShadowVSM : MonoBehaviour
     RenderTexture oldBackTarget1, oldBackTarget2;
     IEnumerator _auto_incr_cascade;
 
-    public IEnumerator UpdateShadowsIncrementalCascade(int cullingMask = -1, Transform trackTransform = null)
+    public IEnumerator UpdateShadowsIncrementalCascade(Transform trackTransform = null)
     {
         /* Update one cascade between each yield.  It has no visible effect, until it has
          * been resumed "numCascades - 1" times, i.e. until it has computed the last cascade;
@@ -115,7 +115,7 @@ public class ShadowVSM : MonoBehaviour
 
         for (int i = numCascades - 1; i >= 0; i--)
         {
-            ComputeCascade(i, cullingMask, trackTransform);
+            ComputeCascade(i, trackTransform);
             if (i > 0)
                 yield return null;
         }
@@ -123,13 +123,13 @@ public class ShadowVSM : MonoBehaviour
         FinalizeUpdateSteps();
     }
 
-    public void UpdateShadowsFull(int cullingMask = -1, Transform trackTransform = null)
+    public void UpdateShadowsFull(Transform trackTransform = null)
     {
         _auto_incr_cascade = null;
         if (!InitializeUpdateSteps())
             return;
         for (int i = numCascades - 1; i >= 0; i--)
-            ComputeCascade(i, cullingMask, trackTransform);
+            ComputeCascade(i, trackTransform);
 
         FinalizeUpdateSteps();
     }
@@ -141,6 +141,9 @@ public class ShadowVSM : MonoBehaviour
 
         SetUpShadowCam();
         _shadowCam.targetTexture = _target;
+
+        if (useDitheringForTransparent) Shader.EnableKeyword("VSM_DRAW_TRANSPARENT_SHADOWS");
+        else Shader.DisableKeyword("VSM_DRAW_TRANSPARENT_SHADOWS");
 
         _blur_material.SetVector("BlurPixelSize", new Vector2(1f / _resolution, 1f / _resolution));
         return true;
@@ -154,14 +157,14 @@ public class ShadowVSM : MonoBehaviour
         return sun.transform;
     }
 
-    void ComputeCascade(int lvl, int cullingMask, Transform trackTransform)
+    void ComputeCascade(int lvl, Transform trackTransform)
     {
         if (trackTransform == null)
             trackTransform = GetMainLightTransform();
-        UpdateShadowCameraPos(cullingMask, trackTransform);
+        UpdateShadowCameraPos(trackTransform);
 
         _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
-        _shadowCam.RenderWithShader(_depthShader, "");
+        _shadowCam.RenderWithShader(_depthShader, onlyOpaqueCasters ? "RenderType" : "");
 
         float y1 = lvl / (float)numCascades;
         float y2 = (lvl + 1) / (float)numCascades;
@@ -275,19 +278,11 @@ public class ShadowVSM : MonoBehaviour
 
     void UpdateShaderValues()
     {
-        //ForAllKeywords(s => Shader.DisableKeyword(ToKeyword(s)));
-        //Shader.EnableKeyword(ToKeyword(Shadows.VARIANCE));
-
         // Set the qualities of the textures
-        Shader.SetGlobalTexture("_ShadowTex1", _backTarget1);
-        Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
-        //Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
-        //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
-        Shader.SetGlobalFloat("_DeltaExtraDistance", deltaExtraDistance);
-        Shader.SetGlobalFloat("_InvNumCascades", 1f / numCascades);
-
-        if (drawTransparent) Shader.EnableKeyword("DRAW_TRANSPARENT_SHADOWS");
-        else Shader.DisableKeyword("DRAW_TRANSPARENT_SHADOWS");
+        Shader.SetGlobalTexture("VSM_ShadowTex1", _backTarget1);
+        Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
+        Shader.SetGlobalFloat("VSM_DeltaExtraDistance", deltaExtraDistance);
+        Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / numCascades);
 
         Vector3 size;
         size.y = _shadowCam.orthographicSize * 2;
@@ -299,8 +294,8 @@ public class ShadowVSM : MonoBehaviour
         size.z = 128f / size.z;
 
         var mat = _shadowCam.transform.worldToLocalMatrix;
-        Shader.SetGlobalMatrix("_LightMatrix", Matrix4x4.Scale(size) * mat);
-        Shader.SetGlobalMatrix("_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _resolution) * mat);
+        Shader.SetGlobalMatrix("VSM_LightMatrix", Matrix4x4.Scale(size) * mat);
+        Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _resolution) * mat);
     }
 
     // Refresh the render target if the scale has changed
@@ -316,7 +311,6 @@ public class ShadowVSM : MonoBehaviour
         {
             if (numCascades <= 0 || _resolution <= 0)
                 return false;
-            Debug.Log("Creating render textures for custom shadows");
             _target = CreateTarget();
         }
         if (_backTarget1 == null)
@@ -327,7 +321,7 @@ public class ShadowVSM : MonoBehaviour
         return true;
     }
 
-    void UpdateShadowCameraPos(int cullingMask, Transform trackTransform)
+    void UpdateShadowCameraPos(Transform trackTransform)
     {
         Camera cam = _shadowCam;
 

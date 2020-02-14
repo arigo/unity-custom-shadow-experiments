@@ -1,4 +1,4 @@
-﻿Shader "Hidden/CustomShadows/Depth" {
+﻿Shader "Hidden/ShadowVSM/Depth" {
     Properties
     {
         _Color("Main Color", Color) = (1,1,1,1)
@@ -14,9 +14,9 @@
             #include "UnityCG.cginc"
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile _ DRAW_TRANSPARENT_SHADOWS
+            #pragma multi_compile _ VSM_DRAW_TRANSPARENT_SHADOWS
 
-#ifdef DRAW_TRANSPARENT_SHADOWS
+#ifdef VSM_DRAW_TRANSPARENT_SHADOWS
             #include "Dither Functions.cginc"
 #endif
 
@@ -47,7 +47,7 @@
             float4 frag(v2f i) : SV_Target
             {
                 float4 col = _Color;
-                #if defined(DRAW_TRANSPARENT_SHADOWS)
+                #if defined(VSM_DRAW_TRANSPARENT_SHADOWS)
                 ditherClip(i.vertex, col.a);
                 #else
                 if (col.a < 0.5) discard;
