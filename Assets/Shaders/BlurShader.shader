@@ -96,14 +96,7 @@
                 {
                     [unroll] for (int y = -1; y <= 1; y++)
                     {
-                        float2 index = i.uv;
-                        index += BlurPixelSize * float2(x, y);
-                        float value1 = tex2D(_MainTex, index).r;
-#ifdef BLUR_LINEAR_PART
-                        col += value1;
-#else
-                        col += value1 * value1;
-#endif
+                        col += pick(i.uv, x, y);
                     }
                 }
                 col /= 9;
