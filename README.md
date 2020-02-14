@@ -1,6 +1,10 @@
 # unity-custom-shadow-experiments
 A few custom shadow implementation experiments within Unity and repo for experimenting with shadowing techniques.
 
+**Repository modified by Armin Rigo.  See Assets/ShadowVSM/README.txt.**
+
+
+
 ## Shadow Types
 ### Hard
 Basic binary hard shadow implementation.
