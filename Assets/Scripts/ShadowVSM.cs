@@ -110,12 +110,12 @@ public class ShadowVSM : MonoBehaviour
          * at this point it really updates the shadows and finishes. */
         Swap(ref oldBackTarget1, ref _backTarget1);
         Swap(ref oldBackTarget2, ref _backTarget2);
-        if (!InitializeUpdateSteps(cullingMask))
+        if (!InitializeUpdateSteps())
             yield break;
 
         for (int i = numCascades - 1; i >= 0; i--)
         {
-            ComputeCascade(i, trackTransform);
+            ComputeCascade(i, cullingMask, trackTransform);
             if (i > 0)
                 yield return null;
         }
@@ -126,25 +126,23 @@ public class ShadowVSM : MonoBehaviour
     public void UpdateShadowsFull(int cullingMask = -1, Transform trackTransform = null)
     {
         _auto_incr_cascade = null;
-        if (!InitializeUpdateSteps(cullingMask))
+        if (!InitializeUpdateSteps())
             return;
         for (int i = numCascades - 1; i >= 0; i--)
-            ComputeCascade(i, trackTransform);
+            ComputeCascade(i, cullingMask, trackTransform);
 
         FinalizeUpdateSteps();
     }
 
-    bool InitializeUpdateSteps(int cullingMask)
+    bool InitializeUpdateSteps()
     {
         if (!UpdateRenderTexture())
             return false;
 
         SetUpShadowCam();
         _shadowCam.targetTexture = _target;
-        _shadowCam.cullingMask = cullingMask;
 
         _blur_material.SetVector("BlurPixelSize", new Vector2(1f / _resolution, 1f / _resolution));
-        _blur_material.DisableKeyword("BLUR_NOTHING");
         return true;
     }
 
@@ -156,17 +154,18 @@ public class ShadowVSM : MonoBehaviour
         return sun.transform;
     }
 
-    void ComputeCascade(int lvl, Transform trackTransform)
+    void ComputeCascade(int lvl, int cullingMask, Transform trackTransform)
     {
         if (trackTransform == null)
             trackTransform = GetMainLightTransform();
-        UpdateShadowCameraPos(trackTransform);
+        UpdateShadowCameraPos(cullingMask, trackTransform);
 
         _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
         _shadowCam.RenderWithShader(_depthShader, "");
 
         float y1 = lvl / (float)numCascades;
         float y2 = (lvl + 1) / (float)numCascades;
+        _blur_material.DisableKeyword("BLUR_NOTHING");
         _blur_material.EnableKeyword("BLUR_LINEAR_PART");
         CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
 
@@ -331,7 +330,7 @@ public class ShadowVSM : MonoBehaviour
         return true;
     }
 
-    void UpdateShadowCameraPos(Transform trackTransform)
+    void UpdateShadowCameraPos(int cullingMask, Transform trackTransform)
     {
         Camera cam = _shadowCam;
 
@@ -345,6 +344,7 @@ public class ShadowVSM : MonoBehaviour
         cam.nearClipPlane = -depthOfShadowRange;
         cam.farClipPlane = depthOfShadowRange;
         cam.aspect = 1;
+        cam.cullingMask = cullingMask;
     }
 
 #if false
@@ -373,9 +373,9 @@ public class ShadowVSM : MonoBehaviour
         cam.orthographicSize = extents.y / 2;
     }
 #endif
-#endregion
+    #endregion
 
-#region Utilities
+    #region Utilities
     // Creates a rendertarget
     RenderTexture CreateTarget()
     {
