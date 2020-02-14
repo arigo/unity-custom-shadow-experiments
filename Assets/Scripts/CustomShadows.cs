@@ -5,31 +5,19 @@ using System.Collections.Generic;
 public class CustomShadows : MonoBehaviour {
 
     [Header("Initialization")]
-    [SerializeField]
-    Shader _depthShader;
+    public Shader _depthShader;
+    public Shader blurShader;
+    Material _blur_material;
 
-    [SerializeField]
-    int _resolution = 1024;
-
-    [SerializeField]
-    ComputeShader _blur;
+    public int _resolution = 512;
 
     [Header("Shadow Settings")]
-    //[Range(0, 100)]
-    //public int blurIterations = 1;
-
-    [Range(0, 1)]
-    public float maxShadowIntensity = 1;
     public bool drawTransparent = true;
-    public int numCascades = 5;
+    public int numCascades = 6;
 
-    //[Range(0, 1)]
-    //public float varianceShadowExpansion = 0.3f;
-    [Range(0, 0.1f)]
-    public float deltaExtraDistance = 0.00016f;
+    public float deltaExtraDistance = 0.0024f;
     public float firstCascadeLevelSize = 8.0f;
-    public float depthOfShadowRange = 100.0f;
-    //public Shadows _shadowType = Shadows.HARD;
+    public float depthOfShadowRange = 1000.0f;
     public FilterMode _filterMode = FilterMode.Bilinear;
 
     // Render Targets
@@ -37,8 +25,6 @@ public class CustomShadows : MonoBehaviour {
     public RenderTexture _backTarget1; // view only in the inspector in game mode
     public RenderTexture _backTarget2; // view only in the inspector in game mode
     public RenderTexture _target;      // view only in the inspector in game mode
-    public Shader blurShader;
-    Material _blur_material;
 
     #region LifeCycle
     void Update ()
@@ -74,8 +60,6 @@ public class CustomShadows : MonoBehaviour {
         }*/
 
 
-        if (_blur_material == null)
-            _blur_material = new Material(blurShader);
         _blur_material.SetVector("BlurPixelSize", new Vector2(1f / _target.width, 1f / _target.height));
         _blur_material.DisableKeyword("BLUR_NOTHING");
 
@@ -108,9 +92,9 @@ public class CustomShadows : MonoBehaviour {
             CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
         }
 
-        /*_blur_material.EnableKeyword("BLUR_NOTHING");
+        _blur_material.EnableKeyword("BLUR_NOTHING");
         CustomBlit(_target, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
-        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);*/
+        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
 
         UpdateShaderValues();
     }
@@ -188,8 +172,12 @@ public class CustomShadows : MonoBehaviour {
         _shadowCam.orthographic = true;
         _shadowCam.nearClipPlane = 0;
         _shadowCam.enabled = false;
-        _shadowCam.backgroundColor = new Color(1 << (numCascades - 1), 1 << (numCascades - 1), 0, 1); //new Color(1, 1, 0, 0); // new Color(0, 0.05f, 0, 0);
+        _shadowCam.backgroundColor = new Color(65, 0, 0, 1);
         _shadowCam.clearFlags = CameraClearFlags.SolidColor;
+
+        if (_blur_material == null)
+            _blur_material = new Material(blurShader);
+        _blur_material.SetColor("_Color", _shadowCam.backgroundColor);
     }
 
     void UpdateShaderValues()
@@ -200,7 +188,7 @@ public class CustomShadows : MonoBehaviour {
         // Set the qualities of the textures
         Shader.SetGlobalTexture("_ShadowTex1", _backTarget1);
         Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
-        Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
+        //Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
         Shader.SetGlobalFloat("_DeltaExtraDistance", deltaExtraDistance);
         Shader.SetGlobalFloat("_InvNumCascades", 1f / numCascades);

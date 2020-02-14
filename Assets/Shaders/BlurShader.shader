@@ -29,6 +29,7 @@
             };
 
             sampler _MainTex;
+            float4 _Color;
             float2 BlurPixelSize;
 
             v2f vert (appdata v)
@@ -52,7 +53,7 @@
             float4 frag (v2f i) : SV_Target
             {
 #ifdef BLUR_NOTHING
-                return float4(1, 1, 0, 0);
+                return _Color;
 #endif
 
 #ifdef GUASSIAN_KERNEL
