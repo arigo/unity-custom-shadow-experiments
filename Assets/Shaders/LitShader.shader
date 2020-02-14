@@ -154,14 +154,14 @@
                 // SHADOWS
                 // get distance to lightPos
                 float4 lightSpacePos = mul(_LightMatrix, i.wPos);
-                //float3 lightSpaceNorm = normalize(mul(_LightMatrix, mul(unity_ObjectToWorld, i.normal)));
+                float3 lightSpaceNorm = normalize(mul(_LightMatrix, mul(unity_ObjectToWorld, i.normal)));
                 float depth = lightSpacePos.z * _ShadowTexScale.z;
 
-                //float2 offset = lightSpaceNorm * _ShadowTexScale.w;
+                float2 offset = lightSpaceNorm * _ShadowTexScale.w;
 
                 float2 uv = lightSpacePos.xy;
                 uv *= _ShadowTexScale.xy;      /* should be in range [-0.5, 0.5] here */
-                //uv += offset;
+                uv += offset;
                 const float MAX = 0.475;
 
                 const float CASCADES = 5;

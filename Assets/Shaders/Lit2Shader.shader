@@ -13,6 +13,8 @@
         LOD 200
 
         CGPROGRAM
+// Upgrade NOTE: excluded shader from OpenGL ES 2.0 because it uses non-square matrices
+#pragma exclude_renderers gles
         // Physically based Standard lighting model.  No shadows.
         #pragma surface surf Standard noshadow nolightmap exclude_path:deferred exclude_path:prepass noforwardadd noshadowmask
 
@@ -45,14 +47,18 @@
         // Shadow Map info
         sampler _ShadowTex1, _ShadowTex2;
         float4x4 _LightMatrix;
+        float4x4 _LightMatrixNormal;
         float _DeltaExtraDistance, _InvNumCascades;
 
-        float myShadowIntensity(float3 wPos)
+        float myShadowIntensity(float3 wNormal, float3 wPos)
         {
-            float4 lightSpacePos = mul(_LightMatrix, float4(wPos, 1));
+            float3 lightSpacePos = mul((float3x4)_LightMatrix, float4(wPos, 1));
+            float2 lightSpaceNorm = mul((float2x3)_LightMatrixNormal, wNormal);
             float depth = lightSpacePos.z;
 
             float2 uv = lightSpacePos.xy;       /* should be in range [-0.5, 0.5] here */
+            uv += lightSpaceNorm.xy;
+
             const float MAX = 0.485;
 
             float2 uv_abs = abs(uv);
@@ -109,7 +115,7 @@
         }
 
         #undef UNITY_SHADOW_ATTENUATION
-        #define UNITY_SHADOW_ATTENUATION(a, worldPos)   myShadowIntensity(worldPos)
+        #define UNITY_SHADOW_ATTENUATION(a, worldPos)   myShadowIntensity(a.worldNormal, worldPos)
 
         ENDCG
     }

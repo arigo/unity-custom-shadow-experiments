@@ -289,21 +289,18 @@ public class ShadowVSM : MonoBehaviour
         if (drawTransparent) Shader.EnableKeyword("DRAW_TRANSPARENT_SHADOWS");
         else Shader.DisableKeyword("DRAW_TRANSPARENT_SHADOWS");
 
-        // TODO: Generate a matrix that transforms between 0-1 instead
-        // of doing the extra math on the GPU
-        Vector4 size = Vector4.zero;
+        Vector3 size;
         size.y = _shadowCam.orthographicSize * 2;
         size.x = _shadowCam.aspect * size.y;
         size.z = _shadowCam.farClipPlane - _shadowCam.nearClipPlane;
-        size.w = 1.0f / _resolution;
 
         size.x = 1f / size.x;
         size.y = 1f / size.y;
         size.z = 128f / size.z;
 
         var mat = _shadowCam.transform.worldToLocalMatrix;
-        mat = Matrix4x4.Scale(size) * mat;
-        Shader.SetGlobalMatrix("_LightMatrix", mat);
+        Shader.SetGlobalMatrix("_LightMatrix", Matrix4x4.Scale(size) * mat);
+        Shader.SetGlobalMatrix("_LightMatrixNormal", Matrix4x4.Scale(Vector3.one / _resolution) * mat);
     }
 
     // Refresh the render target if the scale has changed
