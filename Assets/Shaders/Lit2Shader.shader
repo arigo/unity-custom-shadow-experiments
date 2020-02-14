@@ -45,19 +45,16 @@
         // Shadow Map info
         sampler _ShadowTex1, _ShadowTex2;
         float4x4 _LightMatrix;
-        float4 _ShadowTexScale;
-        float _DeltaExtraDistance;
+        float _DeltaExtraDistance, _InvNumCascades;
 
         float myShadowIntensity(float3 wPos)
         {
             float4 lightSpacePos = mul(_LightMatrix, float4(wPos, 1));
-            float depth = lightSpacePos.z * _ShadowTexScale.z;
+            float depth = lightSpacePos.z;
 
-            float2 uv = lightSpacePos.xy;
-            uv *= _ShadowTexScale.xy;      /* should be in range [-0.5, 0.5] here */
+            float2 uv = lightSpacePos.xy;       /* should be in range [-0.5, 0.5] here */
             const float MAX = 0.485;
 
-            const float CASCADES = 5;
             float2 uv_abs = abs(uv);
             float magnitude = max(uv_abs.x, uv_abs.y) * (2 / MAX);
             float cascade = floor(log2(max(magnitude, 1)));
@@ -67,7 +64,7 @@
 
 
             uv += float2(0.5, 0.5 + cascade);
-            uv.y /= CASCADES;
+            uv.y *= _InvNumCascades;
 
             float shadowIntensity = 0;
             float2 s = float2(tex2D(_ShadowTex1, uv).r, tex2D(_ShadowTex2, uv).r);

@@ -207,10 +207,10 @@ public class CustomShadows : MonoBehaviour {
         // Set the qualities of the textures
         Shader.SetGlobalTexture("_ShadowTex1", _backTarget1);
         Shader.SetGlobalTexture("_ShadowTex2", _backTarget2);
-        Shader.SetGlobalMatrix("_LightMatrix", _shadowCam.transform.worldToLocalMatrix);
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
         Shader.SetGlobalFloat("_DeltaExtraDistance", deltaExtraDistance);
+        Shader.SetGlobalFloat("_InvNumCascades", 1f / CASCADES);
 
         if (drawTransparent) Shader.EnableKeyword("DRAW_TRANSPARENT_SHADOWS");
         else Shader.DisableKeyword("DRAW_TRANSPARENT_SHADOWS");
@@ -226,7 +226,10 @@ public class CustomShadows : MonoBehaviour {
         size.x = 1f / size.x;
         size.y = 1f / size.y;
         size.z = 128f / size.z;
-        Shader.SetGlobalVector("_ShadowTexScale", size);
+
+        var mat = _shadowCam.transform.worldToLocalMatrix;
+        mat = Matrix4x4.Scale(size) * mat;
+        Shader.SetGlobalMatrix("_LightMatrix", mat);
     }
 
     // Refresh the render target if the scale has changed
