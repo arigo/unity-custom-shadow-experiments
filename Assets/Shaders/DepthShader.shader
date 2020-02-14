@@ -12,10 +12,13 @@
         {
             CGPROGRAM
             #include "UnityCG.cginc"
-            #include "../Addons/Dither Functions.cginc"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile _ DRAW_TRANSPARENT_SHADOWS
+
+#ifdef DRAW_TRANSPARENT_SHADOWS
+            #include "Dither Functions.cginc"
+#endif
 
             sampler2D _MainTex;
             float4 _Color;
