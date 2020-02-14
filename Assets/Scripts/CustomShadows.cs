@@ -4,15 +4,6 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 public class CustomShadows : MonoBehaviour {
 
-    const int CASCADES = 5;
-
-    /*public enum Shadows
-    {
-        NONE,
-        HARD,
-        VARIANCE
-    }*/
-
     [Header("Initialization")]
     [SerializeField]
     Shader _depthShader;
@@ -30,6 +21,7 @@ public class CustomShadows : MonoBehaviour {
     [Range(0, 1)]
     public float maxShadowIntensity = 1;
     public bool drawTransparent = true;
+    public int numCascades = 5;
 
     //[Range(0, 1)]
     //public float varianceShadowExpansion = 0.3f;
@@ -54,7 +46,8 @@ public class CustomShadows : MonoBehaviour {
         _depthShader = _depthShader ? _depthShader : Shader.Find("Hidden/CustomShadows/Depth");
         SetUpShadowCam();
         UpdateShadowCameraPos();
-        UpdateRenderTexture();
+        if (!UpdateRenderTexture())
+            return;
 
         _shadowCam.targetTexture = _target;
 
@@ -86,7 +79,7 @@ public class CustomShadows : MonoBehaviour {
         _blur_material.SetVector("BlurPixelSize", new Vector2(1f / _target.width, 1f / _target.height));
         _blur_material.DisableKeyword("BLUR_NOTHING");
 
-        for (int lvl = CASCADES; --lvl >= 0;)
+        for (int lvl = numCascades; --lvl >= 0;)
         {
 #if false
             float sshadowcascade = 1 << (CASCADES - 1 - lvl);
@@ -106,8 +99,8 @@ public class CustomShadows : MonoBehaviour {
             _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
             _shadowCam.RenderWithShader(_depthShader, "");
 
-            float y1 = lvl / (float)CASCADES;
-            float y2 = (lvl + 1) / (float)CASCADES;
+            float y1 = lvl / (float)numCascades;
+            float y2 = (lvl + 1) / (float)numCascades;
             _blur_material.EnableKeyword("BLUR_LINEAR_PART");
             CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
 
@@ -195,7 +188,7 @@ public class CustomShadows : MonoBehaviour {
         _shadowCam.orthographic = true;
         _shadowCam.nearClipPlane = 0;
         _shadowCam.enabled = false;
-        _shadowCam.backgroundColor = new Color(1 << (CASCADES - 1), 1 << (CASCADES - 1), 0, 1); //new Color(1, 1, 0, 0); // new Color(0, 0.05f, 0, 0);
+        _shadowCam.backgroundColor = new Color(1 << (numCascades - 1), 1 << (numCascades - 1), 0, 1); //new Color(1, 1, 0, 0); // new Color(0, 0.05f, 0, 0);
         _shadowCam.clearFlags = CameraClearFlags.SolidColor;
     }
 
@@ -210,7 +203,7 @@ public class CustomShadows : MonoBehaviour {
         Shader.SetGlobalFloat("_MaxShadowIntensity", maxShadowIntensity);
         //Shader.SetGlobalFloat("_VarianceShadowExpansion", varianceShadowExpansion);
         Shader.SetGlobalFloat("_DeltaExtraDistance", deltaExtraDistance);
-        Shader.SetGlobalFloat("_InvNumCascades", 1f / CASCADES);
+        Shader.SetGlobalFloat("_InvNumCascades", 1f / numCascades);
 
         if (drawTransparent) Shader.EnableKeyword("DRAW_TRANSPARENT_SHADOWS");
         else Shader.DisableKeyword("DRAW_TRANSPARENT_SHADOWS");
@@ -233,17 +226,23 @@ public class CustomShadows : MonoBehaviour {
     }
 
     // Refresh the render target if the scale has changed
-    void UpdateRenderTexture()
+    bool UpdateRenderTexture()
     {
-        if (_target != null && (_target.width != _resolution || _backTarget1.filterMode != _filterMode))
+        if (_target != null && (_target.width != _resolution ||
+                                _backTarget1.filterMode != _filterMode ||
+                                _backTarget1.height != _resolution * numCascades))
             DestroyTargets();
 
         if (_target == null)
         {
+            if (numCascades <= 0 || _resolution <= 0)
+                return false;
+            Debug.Log("Creating render textures for custom shadows");
             _target = CreateTarget();
             _backTarget1 = CreateBackTarget();
             _backTarget2 = CreateBackTarget();
         }
+        return true;
     }
 
     void UpdateShadowCameraPos()
@@ -306,7 +305,7 @@ public class CustomShadows : MonoBehaviour {
 
     RenderTexture CreateBackTarget()
     {
-        var tg = new RenderTexture(_resolution, _resolution * CASCADES, 0, RenderTextureFormat.RHalf);
+        var tg = new RenderTexture(_resolution, _resolution * numCascades, 0, RenderTextureFormat.RHalf);
         //tg.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         //tg.volumeDepth = CASCADES;
         tg.filterMode = _filterMode;
