@@ -1,8 +1,20 @@
 ﻿using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
+
 [ExecuteInEditMode]
-public class CustomShadows : MonoBehaviour {
+public class ShadowVSM : MonoBehaviour
+{
+    public enum ShadowComputation
+    {
+        ManualFromScript,
+        AutomaticFull,
+        AutomaticIncrementalCascade,
+    }
+
+    [Header("Shadow computation")]
+    public ShadowComputation _shadowComputation = ShadowComputation.AutomaticFull;
 
     [Header("Initialization")]
     public Shader _depthShader;
@@ -22,76 +34,148 @@ public class CustomShadows : MonoBehaviour {
 
     // Render Targets
     Camera _shadowCam;
-    public RenderTexture _backTarget1; // view only in the inspector in game mode
-    public RenderTexture _backTarget2; // view only in the inspector in game mode
-    public RenderTexture _target;      // view only in the inspector in game mode
+    public RenderTexture _backTarget1; // debugging, see the inspector
+    public RenderTexture _backTarget2; // debugging, see the inspector
+    public RenderTexture _target;      // debugging, see the inspector
+
+
+    public void UpdateShadowTargets()
+    {
+
+    }
+
 
     #region LifeCycle
-    void Update ()
+    void OnEnable()
     {
-        _depthShader = _depthShader ? _depthShader : Shader.Find("Hidden/CustomShadows/Depth");
-        SetUpShadowCam();
-        UpdateShadowCameraPos();
-        if (!UpdateRenderTexture())
-            return;
+        if (Application.isPlaying)
+            switch (_shadowComputation)
+            {
+                case ShadowComputation.AutomaticFull:
+                    Camera.onPreRender += AutomaticFull;
+                    break;
 
-        _shadowCam.targetTexture = _target;
+                case ShadowComputation.AutomaticIncrementalCascade:
+                    Camera.onPreRender += AutomaticIncrementalCascade;
+                    break;
+            }
+    }
 
-        /*_blur.SetTexture(0, "Result1", _backTarget1);
-        _blur.SetTexture(0, "Result2", _backTarget2);
+    private void OnDisable()
+    {
+        if (Application.isPlaying)
+            switch (_shadowComputation)
+            {
+                case ShadowComputation.AutomaticFull:
+                    Camera.onPreRender -= AutomaticFull;
+                    break;
 
-        for (int lvl = CASCADES; --lvl >= 0; )
+                case ShadowComputation.AutomaticIncrementalCascade:
+                    Camera.onPreRender -= AutomaticIncrementalCascade;
+                    break;
+            }
+        DestroyInternals();
+    }
+
+    private void Update()
+    {
+        if (!Application.isPlaying)
+            UpdateShadowsFull();
+    }
+
+    void AutomaticFull(Camera cam)
+    {
+        if (cam == Camera.main)
+            UpdateShadowsFull();
+    }
+
+    void AutomaticIncrementalCascade(Camera cam)
+    {
+        if (cam == Camera.main)
         {
-            _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
-            _shadowCam.RenderWithShader(_depthShader, "");
+            if (_auto_incr_cascade == null)
+                _auto_incr_cascade = UpdateShadowsIncrementalCascade();
+            if (!_auto_incr_cascade.MoveNext())
+                _auto_incr_cascade = null;
+        }
+    }
 
-            _blur.SetTexture(0, "Read", _target);
-            _blur.SetInt("CurrentZ", lvl);
-            _blur.Dispatch(0, _target.width / 8, _target.height / 8, 1);
+    RenderTexture oldBackTarget1, oldBackTarget2;
+    IEnumerator _auto_incr_cascade;
 
-            if (lvl == CASCADES - 1)
-            {
-                _blur.SetInt("CurrentDimensionMinus1", _target.width - 1);
-                _blur.SetInt("CurrentZ", lvl);
-                _blur.SetTexture(1, "Result1", _backTarget1);
-                _blur.SetTexture(1, "Result2", _backTarget2);
-                _blur.Dispatch(1, _target.width / 8, 1, 1);
-            }
-        }*/
+    public IEnumerator UpdateShadowsIncrementalCascade(int cullingMask = -1, Transform trackTransform = null)
+    {
+        /* Update one cascade between each yield.  It has no visible effect, until it has
+         * been resumed "numCascades - 1" times, i.e. until it has computed the last cascade;
+         * at this point it really updates the shadows and finishes. */
+        Swap(ref oldBackTarget1, ref _backTarget1);
+        Swap(ref oldBackTarget2, ref _backTarget2);
+        if (!InitializeUpdateSteps(cullingMask))
+            yield break;
 
-
-        _blur_material.SetVector("BlurPixelSize", new Vector2(1f / _target.width, 1f / _target.height));
-        _blur_material.DisableKeyword("BLUR_NOTHING");
-
-        for (int lvl = numCascades; --lvl >= 0;)
+        for (int i = numCascades - 1; i >= 0; i--)
         {
-#if false
-            float sshadowcascade = 1 << (CASCADES - 1 - lvl);
-            Vector2 ss;      /* depth = depth * ss.x + ss.y; */
-            if (SystemInfo.usesReversedZBuffer)
-            {
-                /* we want: depth = ((1 - depth) - 0.5) * 2 * sshadowcascade */
-                ss = new Vector2(-2 * sshadowcascade, sshadowcascade);
-            }
-            else
-            {
-                /* we want: depth = (depth - 0.5) * 2 * sshadowcascade */
-                ss = new Vector2(2 * sshadowcascade, -sshadowcascade);
-            }
-            Shader.SetGlobalVector("SShadowCascade", ss);
-#endif
-            _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
-            _shadowCam.RenderWithShader(_depthShader, "");
-
-            float y1 = lvl / (float)numCascades;
-            float y2 = (lvl + 1) / (float)numCascades;
-            _blur_material.EnableKeyword("BLUR_LINEAR_PART");
-            CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
-
-            _blur_material.DisableKeyword("BLUR_LINEAR_PART");
-            CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
+            ComputeCascade(i, trackTransform);
+            if (i > 0)
+                yield return null;
         }
 
+        FinalizeUpdateSteps();
+    }
+
+    public void UpdateShadowsFull(int cullingMask = -1, Transform trackTransform = null)
+    {
+        _auto_incr_cascade = null;
+        if (!InitializeUpdateSteps(cullingMask))
+            return;
+        for (int i = numCascades - 1; i >= 0; i--)
+            ComputeCascade(i, trackTransform);
+
+        FinalizeUpdateSteps();
+    }
+
+    bool InitializeUpdateSteps(int cullingMask)
+    {
+        if (!UpdateRenderTexture())
+            return false;
+
+        SetUpShadowCam();
+        _shadowCam.targetTexture = _target;
+        _shadowCam.cullingMask = cullingMask;
+
+        _blur_material.SetVector("BlurPixelSize", new Vector2(1f / _resolution, 1f / _resolution));
+        _blur_material.DisableKeyword("BLUR_NOTHING");
+        return true;
+    }
+
+    static Transform GetMainLightTransform()
+    {
+        Light sun = RenderSettings.sun;
+        if (sun == null)
+            sun = FindObjectOfType<Light>();
+        return sun.transform;
+    }
+
+    void ComputeCascade(int lvl, Transform trackTransform)
+    {
+        if (trackTransform == null)
+            trackTransform = GetMainLightTransform();
+        UpdateShadowCameraPos(trackTransform);
+
+        _shadowCam.orthographicSize = firstCascadeLevelSize * Mathf.Pow(2, lvl);
+        _shadowCam.RenderWithShader(_depthShader, "");
+
+        float y1 = lvl / (float)numCascades;
+        float y2 = (lvl + 1) / (float)numCascades;
+        _blur_material.EnableKeyword("BLUR_LINEAR_PART");
+        CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
+
+        _blur_material.DisableKeyword("BLUR_LINEAR_PART");
+        CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
+    }
+
+    void FinalizeUpdateSteps()
+    {
         _blur_material.EnableKeyword("BLUR_NOTHING");
         CustomBlit(_target, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
         CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
@@ -138,10 +222,20 @@ public class CustomShadows : MonoBehaviour {
             DestroyImmediate(_backTarget2);
             _backTarget2 = null;
         }
+        if (oldBackTarget1)
+        {
+            DestroyImmediate(oldBackTarget1);
+            oldBackTarget1 = null;
+        }
+        if (oldBackTarget2)
+        {
+            DestroyImmediate(oldBackTarget2);
+            oldBackTarget2 = null;
+        }
     }
 
     // Disable the shadows
-    void OnDisable()
+    void DestroyInternals()
     {
         if (_shadowCam)
         {
@@ -154,7 +248,7 @@ public class CustomShadows : MonoBehaviour {
 
     private void OnDestroy()
     {
-        OnDisable();
+        DestroyInternals();
     }
 #endregion
 
@@ -216,9 +310,10 @@ public class CustomShadows : MonoBehaviour {
     // Refresh the render target if the scale has changed
     bool UpdateRenderTexture()
     {
-        if (_target != null && (_target.width != _resolution ||
-                                _backTarget1.filterMode != _filterMode ||
-                                _backTarget1.height != _resolution * numCascades))
+        if (_target != null && _target.width != _resolution)
+            DestroyTargets();
+        if (_backTarget1 != null && (_backTarget1.filterMode != _filterMode ||
+                                     _backTarget1.height != _resolution * numCascades))
             DestroyTargets();
 
         if (_target == null)
@@ -227,19 +322,21 @@ public class CustomShadows : MonoBehaviour {
                 return false;
             Debug.Log("Creating render textures for custom shadows");
             _target = CreateTarget();
+        }
+        if (_backTarget1 == null)
+        {
             _backTarget1 = CreateBackTarget();
             _backTarget2 = CreateBackTarget();
         }
         return true;
     }
 
-    void UpdateShadowCameraPos()
+    void UpdateShadowCameraPos(Transform trackTransform)
     {
         Camera cam = _shadowCam;
 
-        Light l = FindObjectOfType<Light>();
-        cam.transform.position = l.transform.position;
-        cam.transform.rotation = l.transform.rotation;
+        cam.transform.position = trackTransform.position;
+        cam.transform.rotation = trackTransform.rotation;
         cam.transform.LookAt(cam.transform.position + cam.transform.forward, cam.transform.up);
 
         /* Set up the clip planes so that we store depth values in the range [-0.5, 0.5],
@@ -306,18 +403,18 @@ public class CustomShadows : MonoBehaviour {
         return tg;
     }
 
-    /*void ForAllKeywords(System.Action<Shadows> func)
-    {
-        func(Shadows.HARD);
-        func(Shadows.VARIANCE);
-    }
+/*void ForAllKeywords(System.Action<Shadows> func)
+{
+    func(Shadows.HARD);
+    func(Shadows.VARIANCE);
+}
 
-    string ToKeyword(Shadows en)
-    {
-        if (en == Shadows.HARD) return "HARD_SHADOWS";
-        if (en == Shadows.VARIANCE) return "VARIANCE_SHADOWS";
-        return "";
-    }*/
+string ToKeyword(Shadows en)
+{
+    if (en == Shadows.HARD) return "HARD_SHADOWS";
+    if (en == Shadows.VARIANCE) return "VARIANCE_SHADOWS";
+    return "";
+}*/
 
 #if false
     // Returns the bounds extents in the provided frame
@@ -367,6 +464,7 @@ public class CustomShadows : MonoBehaviour {
                 }
     }
 
+#endif
     // Swap Elements A and B
     void Swap<T>(ref T a, ref T b)
     {
@@ -374,6 +472,5 @@ public class CustomShadows : MonoBehaviour {
         a = b;
         b = temp;
     }
-#endif
 #endregion
 }
