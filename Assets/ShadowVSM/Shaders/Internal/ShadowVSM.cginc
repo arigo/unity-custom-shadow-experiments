@@ -57,7 +57,7 @@ float VSM_ShadowIntensity(float3 wPos, float3 wNormal)
     float delta = depth - x;
     float p_max = var / (var + delta * delta);
 
-    p_max = 1.9 - p_max * 3;
+    p_max = 2.44 - p_max * 3;
     //p_max *= pow(2, cascade);
 
     // To alleviate the light bleeding, expand the shadows to fill in the gaps
