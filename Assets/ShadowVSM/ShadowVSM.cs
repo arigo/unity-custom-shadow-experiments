@@ -14,13 +14,18 @@ public class ShadowVSM : MonoBehaviour
     }
 
     [Header("Shadow computation")]
+    [Tooltip("ManualFromScript: shadows are only updated when you call UpdateShadowsXxx(). " +
+             "AutomaticFull: shadows are updated every frame. " +
+             "AutomaticIncrementalCascade: shadows take numCascades frames to update.")]
     public ShadowComputation _shadowComputation = ShadowComputation.AutomaticFull;
+    [Tooltip("Set this to false to disable the automatic shadow camera positioning. " +
+             "See SetShadowCameraPosition().")]
+    public bool _shadowCameraFollowsMainCamera = true;
 
     [Header("Initialization")]
     public Shader _depthShader;
     public Shader blurShader;
     Material _blur_material;
-    public Transform lightCenterAndDirection;
 
     [Header("Shadow Settings")]
     public int _resolution = 512;
@@ -108,26 +113,15 @@ public class ShadowVSM : MonoBehaviour
 
     struct ComputeData
     {
-        internal Transform trackTransform;
         internal int numCascades;
         internal float firstCascadeLevelSize;
     }
 
     void InitComputeData(out ComputeData cdata)
     {
-        /* ComputeData stores parameters that we want to remain constant over several calls
-         * to UpdateShadowsIncrementalCascade(), even if they are public fields that may be
+        /* ComputeData stores parameters that we want to remain constant over several frames
+         * in UpdateShadowsIncrementalCascade(), even if they are public fields that may be
          * modified at a random point. */
-        if (lightCenterAndDirection == null)
-        {
-            Light sun = RenderSettings.sun;
-            if (sun == null)
-                sun = FindObjectOfType<Light>();
-            cdata.trackTransform = sun.transform;
-        }
-        else
-            cdata.trackTransform = lightCenterAndDirection;
-
         cdata.numCascades = numCascades;
         cdata.firstCascadeLevelSize = firstCascadeLevelSize;
     }
@@ -185,8 +179,6 @@ public class ShadowVSM : MonoBehaviour
 
     void ComputeCascade(int lvl, ComputeData cdata)
     {
-        UpdateShadowCameraPos(cdata.trackTransform);
-
         _shadowCam.orthographicSize = cdata.firstCascadeLevelSize * Mathf.Pow(2, lvl);
         _shadowCam.RenderWithShader(_depthShader, onlyOpaqueCasters ? "RenderType" : "");
 
@@ -277,7 +269,7 @@ public class ShadowVSM : MonoBehaviour
         DestroyInternals();
     }
 
-    void SetUpShadowCam()
+    Camera FetchShadowCamera()
     {
         if (_shadowCam == null)
         {
@@ -298,23 +290,66 @@ public class ShadowVSM : MonoBehaviour
                 _blur_material = new Material(blurShader);
             _blur_material.SetColor("_Color", _shadowCam.backgroundColor);
         }
+        return _shadowCam;
+    }
+
+    void SetUpShadowCam()
+    {
+        var cam = FetchShadowCamera();
 
         /* Set up the clip planes so that we store depth values in the range [-0.5, 0.5],
          * with values near zero being near us even if depthOfShadowRange is very large.
          * This maximizes the precision in the RHalf textures near us. */
-        _shadowCam.nearClipPlane = -depthOfShadowRange;
-        _shadowCam.farClipPlane = depthOfShadowRange;
-        _shadowCam.cullingMask = cullingMask;
+        cam.nearClipPlane = -depthOfShadowRange;
+        cam.farClipPlane = depthOfShadowRange;
+        cam.cullingMask = cullingMask;
+
+        if (_shadowCameraFollowsMainCamera)
+        {
+            Camera maincam = Camera.main;
+            if (maincam == null)
+            {
+                Debug.LogError("ShadowVSM: Camera.main is null");
+            }
+            else
+            {
+                Light sun = RenderSettings.sun;
+                if (sun == null)
+                    sun = FindObjectOfType<Light>();
+
+                if (sun == null)
+                {
+                    Debug.LogError("ShadowVSM: no Light found in the scene");
+                }
+                else
+                {
+                    cam.transform.SetPositionAndRotation(maincam.transform.position,
+                                                         sun.transform.rotation);
+                }
+            }
+        }
     }
 
-    void UpdateShaderValues(ComputeData cdata)
+    public void SetShadowCameraPosition(Vector3 position, Quaternion rotation)
     {
-        // Set the qualities of the textures
-        Shader.SetGlobalTexture("VSM_ShadowTex1", _backTarget1);
-        Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
-        Shader.SetGlobalFloat("VSM_DeltaExtraDistance", deltaExtraDistance);
-        Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / cdata.numCascades);
+        SetShadowCameraPosition(position, rotation, Vector3.one);
+    }
 
+    public void SetShadowCameraPosition(Vector3 position, Quaternion rotation, Vector3 scale)
+    {
+        /* For _shadowCameraFollowsMainCamera == false.  Move the shadow camera to the given
+         * global position, rotation, and optionally scale.  Use this in ManualFromScript mode
+         * if the shadows only involve semi-static objects, but these semi-static objects can
+         * move and you want the shadows on them to move with them.
+         */
+        var cam = FetchShadowCamera();
+        cam.transform.SetPositionAndRotation(position, rotation);
+        cam.transform.localScale = scale;
+        UpdateShadowCamTransformShaderValues();
+    }
+
+    void UpdateShadowCamTransformShaderValues()
+    {
         Vector3 size;
         size.y = _shadowCam.orthographicSize * 2;
         size.x = _shadowCam.aspect * size.y;
@@ -327,6 +362,17 @@ public class ShadowVSM : MonoBehaviour
         var mat = _shadowCam.transform.worldToLocalMatrix;
         Shader.SetGlobalMatrix("VSM_LightMatrix", Matrix4x4.Scale(size) * mat);
         Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _backTarget1.width) * mat);
+    }
+
+    void UpdateShaderValues(ComputeData cdata)
+    {
+        // Set the qualities of the textures
+        Shader.SetGlobalTexture("VSM_ShadowTex1", _backTarget1);
+        Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
+        Shader.SetGlobalFloat("VSM_DeltaExtraDistance", deltaExtraDistance);
+        Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / cdata.numCascades);
+
+        UpdateShadowCamTransformShaderValues();
 
 #if UNITY_EDITOR
         ShowRenderTexturesForDebugging(cdata);
@@ -336,7 +382,6 @@ public class ShadowVSM : MonoBehaviour
 #if UNITY_EDITOR
     class RenderTextureDebugging : MonoBehaviour
     {
-        public Transform trackTransform;
         public RenderTexture target, backTarget1, backTarget2;
     }
     void ShowRenderTexturesForDebugging(ComputeData cdata)
@@ -344,7 +389,6 @@ public class ShadowVSM : MonoBehaviour
         var rtd = _shadowCam.GetComponent<RenderTextureDebugging>();
         if (rtd == null)
             rtd = _shadowCam.gameObject.AddComponent<RenderTextureDebugging>();
-        rtd.trackTransform = cdata.trackTransform;
         rtd.target = _target;
         rtd.backTarget1 = _backTarget1;
         rtd.backTarget2 = _backTarget2;
@@ -376,11 +420,9 @@ public class ShadowVSM : MonoBehaviour
 
     void UpdateShadowCameraPos(Transform trackTransform)
     {
-        if (!trackTransform)
-            return;
         Camera cam = _shadowCam;
-        cam.transform.position = trackTransform.position;
-        cam.transform.rotation = Quaternion.LookRotation(trackTransform.forward, Vector3.up);
+        cam.transform.SetPositionAndRotation(trackTransform.position, trackTransform.rotation);
+        cam.transform.localScale = trackTransform.lossyScale;
     }
 
     // Creates a rendertarget

@@ -21,11 +21,7 @@ tested in the forward rendering mode.
 
 Demo: see the scene in the Assets/Demo/ directory.  You can see the kind of shadows we
 get and how they are getting more and more fuzzy and less detailed when we look far from
-the origin.  The high-resolution center of the shadows is (by default) at the Light
-position.  In real usage you'll have to set "lightCenterAndDirection" to a transform that
-follows the position of the main camera (say) but keeps the rotation of the directional
-light.
-
+the main camera.
 
 How to use:
 
@@ -45,7 +41,7 @@ By default all objects with "RenderType" = "Opaque" should cast shadows.  See th
 
 "Shadow computation" can be changed if you have a situation where the shadowmaps don't
 need to be recomputed every frame.  "Automatic Incremental Cascade" will recompute it
-incrementally over N frames, where N is the number of cascades (set below).  Or,
+incrementally over N frames, where N is the number of cascades (see below).  Or,
 "Manual from script" means it will only recompute when you call the methods
 ShadowVSM.UpdateShadowsFull() or ShadowVSM.UpdateShadowsIncrementalCascade().
 
@@ -56,6 +52,9 @@ Shadow cascades are in powers of two.  They are concentric boxes centered (by de
 on the directional light of the scene, each one twice as big as the previous one.  Note
 that traditionally we'd make boxes starting at the camera and looking forward only;
 indeed it is wasteful to compute shadowmaps for parts of the world that are not
-displayed.  The idea was for me to use this in the computation mode "manual from
-script", computing shadows independently from the actual camera position and reusing
-them independently of the camera movement.
+displayed.  I didn't fix this so far, because that is necessary in "Manual from script"
+mode: computing shadows independently from the actual camera position and rotation and
+reusing them even if the camera turns around and moves.  In that mode, the script also
+needs to check if the camera has moved too far from the initial position, because then
+it reaches low-precision cascades that are not meant to be looked at closely.  At that
+point the script needs to force a recomputation.
