@@ -59,7 +59,8 @@
 #else
                 depth = depth - 0.5;
 #endif
-                return float4(depth * 128, 0, 0, 1);
+                depth *= 128;
+                return float4(depth, depth * depth, 0, 1);
             }
             ENDCG
         }

@@ -43,11 +43,12 @@
             float pick(float2 index, int x, int y)
             {
                 index += BlurPixelSize * float2(x, y);
-                float col = tex2D(_MainTex, index);
-#ifndef BLUR_LINEAR_PART
-                col *= col;
+                float2 src = tex2D(_MainTex, index).rg;
+#ifdef BLUR_LINEAR_PART
+                return src.r;
+#else
+                return src.g;
 #endif
-                return col;
             }
 
             float4 frag (v2f i) : SV_Target

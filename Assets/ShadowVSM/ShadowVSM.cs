@@ -447,9 +447,9 @@ public class ShadowVSM : MonoBehaviour
     RenderTexture CreateTarget()
     {
         RenderTexture tg = new RenderTexture(_resolution, _resolution, 24,
-                                             RenderTextureFormat.RHalf);
+                                             RenderTextureFormat.ARGBHalf);
         tg.wrapMode = TextureWrapMode.Clamp;
-        tg.antiAliasing = 8;
+        tg.antiAliasing = 4;
         tg.Create();
         return tg;
     }
