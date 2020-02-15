@@ -22,9 +22,9 @@ tested in the forward rendering mode.
 Demo: see the scene in the Assets/Demo/ directory.  You can see the kind of shadows we
 get and how they are getting more and more fuzzy and less detailed when we look far from
 the origin.  The high-resolution center of the shadows is (by default) at the Light
-position.  In real usage you'll have to move, but not rotate, the directional Light
-gameobject along with the camera so that the high-res center remains where we are (or use
-explicitly another transform in the "Manual from script" computation mode, see below).
+position.  In real usage you'll have to set "lightCenterAndDirection" to a transform that
+follows the position of the main camera (say) but keeps the rotation of the directional
+light.
 
 
 How to use:
@@ -58,4 +58,4 @@ that traditionally we'd make boxes starting at the camera and looking forward on
 indeed it is wasteful to compute shadowmaps for parts of the world that are not
 displayed.  The idea was for me to use this in the computation mode "manual from
 script", computing shadows independently from the actual camera position and reusing
-them however the camera moves.
+them independently of the camera movement.
