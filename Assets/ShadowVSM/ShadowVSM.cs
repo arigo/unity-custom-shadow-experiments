@@ -36,12 +36,8 @@ public class ShadowVSM : MonoBehaviour
     public LayerMask cullingMask = -1;
     public bool onlyOpaqueCasters = true;
 
-    [Header("Debugging")]
-    // Render Targets
-    public RenderTexture _backTarget1; // debugging, see the inspector
-    public RenderTexture _backTarget2; // debugging, see the inspector
-    public RenderTexture _target;      // debugging, see the inspector
-
+    RenderTexture _backTarget1, _backTarget2, _target;
+    RenderTexture oldBackTarget1, oldBackTarget2;
     Camera _shadowCam;
 
 
@@ -108,7 +104,6 @@ public class ShadowVSM : MonoBehaviour
         }
     }
 
-    RenderTexture oldBackTarget1, oldBackTarget2;
     IEnumerator _auto_incr_cascade;
 
     struct ComputeData
@@ -332,7 +327,29 @@ public class ShadowVSM : MonoBehaviour
         var mat = _shadowCam.transform.worldToLocalMatrix;
         Shader.SetGlobalMatrix("VSM_LightMatrix", Matrix4x4.Scale(size) * mat);
         Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _backTarget1.width) * mat);
+
+#if UNITY_EDITOR
+        ShowRenderTexturesForDebugging(cdata);
+#endif
     }
+
+#if UNITY_EDITOR
+    class RenderTextureDebugging : MonoBehaviour
+    {
+        public Transform trackTransform;
+        public RenderTexture target, backTarget1, backTarget2;
+    }
+    void ShowRenderTexturesForDebugging(ComputeData cdata)
+    {
+        var rtd = _shadowCam.GetComponent<RenderTextureDebugging>();
+        if (rtd == null)
+            rtd = _shadowCam.gameObject.AddComponent<RenderTextureDebugging>();
+        rtd.trackTransform = cdata.trackTransform;
+        rtd.target = _target;
+        rtd.backTarget1 = _backTarget1;
+        rtd.backTarget2 = _backTarget2;
+    }
+#endif
 
     // Refresh the render target if the scale has changed
     bool UpdateRenderTexture()
