@@ -76,11 +76,13 @@ public class ShadowVSM : MonoBehaviour
         DestroyInternals();
     }
 
+#if UNITY_EDITOR
     private void Update()
     {
         if (!Application.isPlaying)
             UpdateShadowsFull();
     }
+#endif
 
     void AutomaticFull(Camera cam)
     {
