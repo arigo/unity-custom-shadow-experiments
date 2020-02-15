@@ -84,16 +84,23 @@ public class ShadowVSM : MonoBehaviour
     }
 #endif
 
+    int most_recent_frame_number = -1;
+
     void AutomaticFull(Camera cam)
     {
-        if (cam == Camera.main)
+        if (Time.frameCount != most_recent_frame_number)
+        {
+            most_recent_frame_number = Time.frameCount;
             UpdateShadowsFull();
+        }
     }
 
     void AutomaticIncrementalCascade(Camera cam)
     {
-        if (cam == Camera.main)
+        if (Time.frameCount != most_recent_frame_number)
         {
+            most_recent_frame_number = Time.frameCount;
+
             if (_auto_incr_cascade == null)
                 _auto_incr_cascade = UpdateShadowsIncrementalCascade();
             if (!_auto_incr_cascade.MoveNext())
