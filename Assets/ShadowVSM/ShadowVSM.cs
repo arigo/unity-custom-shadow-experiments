@@ -282,7 +282,7 @@ public class ShadowVSM : MonoBehaviour
             _shadowCam.orthographic = true;
             _shadowCam.nearClipPlane = 0;
             _shadowCam.enabled = false;
-            _shadowCam.backgroundColor = new Color(65, 0, 0, 1);
+            _shadowCam.backgroundColor = new Color(65, 65*65, 0, 1);
             _shadowCam.clearFlags = CameraClearFlags.SolidColor;
             _shadowCam.aspect = 1;
 
