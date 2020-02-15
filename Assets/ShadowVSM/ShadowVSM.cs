@@ -293,6 +293,24 @@ public class ShadowVSM : MonoBehaviour
         return _shadowCam;
     }
 
+    Light _main_light_cache;
+
+    Light GetMainLight()
+    {
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+            _main_light_cache = null;
+#endif
+        if (_main_light_cache == null)
+        {
+            foreach (var light1 in FindObjectsOfType<Light>())
+                if (light1.type == LightType.Directional)
+                    if (_main_light_cache == null || light1.intensity > _main_light_cache.intensity)
+                        _main_light_cache = light1;
+        }
+        return _main_light_cache;
+    }
+
     void SetUpShadowCam()
     {
         var cam = FetchShadowCamera();
@@ -315,11 +333,11 @@ public class ShadowVSM : MonoBehaviour
             {
                 Light sun = RenderSettings.sun;
                 if (sun == null)
-                    sun = FindObjectOfType<Light>();
+                    sun = GetMainLight();
 
                 if (sun == null)
                 {
-                    Debug.LogError("ShadowVSM: no Light found in the scene");
+                    Debug.LogError("ShadowVSM: no directional Light found in the scene");
                 }
                 else
                 {
