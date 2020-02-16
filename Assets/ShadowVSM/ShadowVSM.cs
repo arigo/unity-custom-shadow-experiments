@@ -40,8 +40,23 @@ public class ShadowVSM : MonoBehaviour
     public LayerMask cullingMask = -1;
     public bool onlyOpaqueCasters = true;
 
+
+    /* RenderTextures:
+     *   "_target" is the ShadowCam target.  Still needs to be filtered.  Size is 'res x res'.
+     *
+     * The other four RenderTextures are size 'res x (res*numCascades)'.  They only contain
+     * one 16-bit float component each but come in pairs, with the '1' storing the depth and
+     * the '2' storing the square of the depth.  The Oculus Quest does not support textures
+     * with two 16-bit float components.
+     *
+     * The "backTarget" pair are read by the shaders to display the shadows.  If we are only
+     * using non-incremental mode, then the "renderBackTarget" pair is an identical pair of
+     * objects.  If we're using incremental mode, then "renderBackTarget" is a different pair.
+     * It is the pair in which we are currently rendering the new shadows, swapped when we're
+     * done.
+     */
     RenderTexture _backTarget1, _backTarget2, _target;
-    RenderTexture oldBackTarget1, oldBackTarget2;
+    RenderTexture _renderBackTarget1, _renderBackTarget2;
     Camera _shadowCam;
 
 
@@ -130,9 +145,7 @@ public class ShadowVSM : MonoBehaviour
         /* Update one cascade between each yield.  It has no visible effect, until it has
          * been resumed "numCascades - 1" times, i.e. until it has computed the last cascade;
          * at this point it really updates the shadows and finishes. */
-        Swap(ref oldBackTarget1, ref _backTarget1);
-        Swap(ref oldBackTarget2, ref _backTarget2);
-        if (!InitializeUpdateSteps())
+        if (!InitializeUpdateSteps(true))
             yield break;
 
         ComputeData cdata;
@@ -151,7 +164,7 @@ public class ShadowVSM : MonoBehaviour
     public void UpdateShadowsFull()
     {
         _auto_incr_cascade = null;
-        if (!InitializeUpdateSteps())
+        if (!InitializeUpdateSteps(false))
             return;
 
         ComputeData cdata;
@@ -161,9 +174,9 @@ public class ShadowVSM : MonoBehaviour
         FinalizeUpdateSteps(cdata);
     }
 
-    bool InitializeUpdateSteps()
+    bool InitializeUpdateSteps(bool incremental)
     {
-        if (!UpdateRenderTexture())
+        if (!UpdateRenderTexture(incremental))
             return false;
 
         SetUpShadowCam();
@@ -192,11 +205,11 @@ public class ShadowVSM : MonoBehaviour
         float y2 = (lvl + 1) / (float)cdata.numCascades;
 
         _blur_material.EnableKeyword("BLUR_LINEAR_PART");
-        CustomBlit(rt, _backTarget1, _blur_material, y1, y2);
+        CustomBlit(rt, _renderBackTarget1, _blur_material, y1, y2);
         _blur_material.DisableKeyword("BLUR_LINEAR_PART");
 
         _blur_material.EnableKeyword("BLUR_SQUARE_PART");
-        CustomBlit(rt, _backTarget2, _blur_material, y1, y2);
+        CustomBlit(rt, _renderBackTarget2, _blur_material, y1, y2);
         _blur_material.DisableKeyword("BLUR_SQUARE_PART");
 
         RenderTexture.ReleaseTemporary(rt);
@@ -204,8 +217,11 @@ public class ShadowVSM : MonoBehaviour
 
     void FinalizeUpdateSteps(ComputeData cdata)
     {
-        CustomBlit(null, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
-        CustomBlit(null, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
+        CustomBlit(null, _renderBackTarget1, _blur_material, 1f - 1f / _renderBackTarget1.height, 1f);
+        CustomBlit(null, _renderBackTarget2, _blur_material, 1f - 1f / _renderBackTarget2.height, 1f);
+
+        Swap(ref _backTarget1, ref _renderBackTarget1);   /* might be identical, if !incremental */
+        Swap(ref _backTarget2, ref _renderBackTarget2);
 
         UpdateShaderValues(cdata);
     }
@@ -249,15 +265,15 @@ public class ShadowVSM : MonoBehaviour
             DestroyImmediate(_backTarget2);
             _backTarget2 = null;
         }
-        if (oldBackTarget1)
+        if (_renderBackTarget1)
         {
-            DestroyImmediate(oldBackTarget1);
-            oldBackTarget1 = null;
+            DestroyImmediate(_renderBackTarget1);
+            _renderBackTarget1 = null;
         }
-        if (oldBackTarget2)
+        if (_renderBackTarget2)
         {
-            DestroyImmediate(oldBackTarget2);
-            oldBackTarget2 = null;
+            DestroyImmediate(_renderBackTarget2);
+            _renderBackTarget2 = null;
         }
     }
 
@@ -378,11 +394,15 @@ public class ShadowVSM : MonoBehaviour
         var cam = FetchShadowCamera();
         cam.transform.SetPositionAndRotation(position, rotation);
         cam.transform.localScale = scale;
-        UpdateShadowCamTransformShaderValues(_resolution);
     }
 
-    void UpdateShadowCamTransformShaderValues(int width)
+    void UpdateShaderValues(ComputeData cdata)
     {
+        // Set the qualities of the textures
+        Shader.SetGlobalTexture("VSM_ShadowTex1", _backTarget1);
+        Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
+        Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / cdata.numCascades);
+
         Vector3 size;
         size.y = _shadowCam.orthographicSize * 2;
         size.x = _shadowCam.aspect * size.y;
@@ -394,20 +414,10 @@ public class ShadowVSM : MonoBehaviour
 
         var mat = _shadowCam.transform.worldToLocalMatrix;
         Shader.SetGlobalMatrix("VSM_LightMatrix", Matrix4x4.Scale(size) * mat);
-        Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / width) * mat);
-    }
-
-    void UpdateShaderValues(ComputeData cdata)
-    {
-        // Set the qualities of the textures
-        Shader.SetGlobalTexture("VSM_ShadowTex1", _backTarget1);
-        Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
-        Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / cdata.numCascades);
-
-        UpdateShadowCamTransformShaderValues(_backTarget1.width);
+        Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _backTarget1.width) * mat);
 
 #if UNITY_EDITOR
-        ShowRenderTexturesForDebugging(cdata);
+        ShowRenderTexturesForDebugging();
 #endif
     }
 
@@ -415,8 +425,9 @@ public class ShadowVSM : MonoBehaviour
     class RenderTextureDebugging : MonoBehaviour
     {
         public RenderTexture target, backTarget1, backTarget2;
+        public RenderTexture incrementalRendering1, incrementalRendering2;
     }
-    void ShowRenderTexturesForDebugging(ComputeData cdata)
+    void ShowRenderTexturesForDebugging()
     {
         var rtd = _shadowCam.GetComponent<RenderTextureDebugging>();
         if (rtd == null)
@@ -424,11 +435,13 @@ public class ShadowVSM : MonoBehaviour
         rtd.target = _target;
         rtd.backTarget1 = _backTarget1;
         rtd.backTarget2 = _backTarget2;
+        rtd.incrementalRendering1 = _backTarget1 == _renderBackTarget1 ? null : _renderBackTarget1;
+        rtd.incrementalRendering2 = _backTarget2 == _renderBackTarget2 ? null : _renderBackTarget2;
     }
 #endif
 
     // Refresh the render target if the scale has changed
-    bool UpdateRenderTexture()
+    bool UpdateRenderTexture(bool incremental)
     {
         if (_target != null && _target.width != _resolution)
             DestroyTargets();
@@ -446,6 +459,19 @@ public class ShadowVSM : MonoBehaviour
         {
             _backTarget1 = CreateBackTarget();
             _backTarget2 = CreateBackTarget();
+        }
+        if (_renderBackTarget1 == null || (incremental && _renderBackTarget1 == _backTarget1))
+        {
+            if (incremental)
+            {
+                _renderBackTarget1 = CreateBackTarget();
+                _renderBackTarget2 = CreateBackTarget();
+            }
+            else
+            {
+                _renderBackTarget1 = _backTarget1;
+                _renderBackTarget2 = _backTarget2;
+            }
         }
         return true;
     }
