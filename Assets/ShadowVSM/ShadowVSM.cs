@@ -127,8 +127,9 @@ public class ShadowVSM : MonoBehaviour
 
     struct ComputeData
     {
-        internal int numCascades;
+        internal int numCascades, resolution;
         internal float firstCascadeLevelSize;
+        internal float depthOfShadowRange;
     }
 
     void InitComputeData(out ComputeData cdata)
@@ -137,7 +138,9 @@ public class ShadowVSM : MonoBehaviour
          * in UpdateShadowsIncrementalCascade(), even if they are public fields that may be
          * modified at a random point. */
         cdata.numCascades = numCascades;
+        cdata.resolution = _resolution;
         cdata.firstCascadeLevelSize = firstCascadeLevelSize;
+        cdata.depthOfShadowRange = depthOfShadowRange;
     }
 
     public IEnumerator UpdateShadowsIncrementalCascade()
@@ -148,8 +151,7 @@ public class ShadowVSM : MonoBehaviour
         if (!InitializeUpdateSteps(true))
             yield break;
 
-        ComputeData cdata;
-        InitComputeData(out cdata);
+        InitComputeData(out ComputeData cdata);
 
         for (int i = cdata.numCascades - 1; i >= 0; i--)
         {
@@ -167,8 +169,7 @@ public class ShadowVSM : MonoBehaviour
         if (!InitializeUpdateSteps(false))
             return;
 
-        ComputeData cdata;
-        InitComputeData(out cdata);
+        InitComputeData(out ComputeData cdata);
         for (int i = cdata.numCascades - 1; i >= 0; i--)
             ComputeCascade(i, cdata);
         FinalizeUpdateSteps(cdata);
@@ -394,6 +395,29 @@ public class ShadowVSM : MonoBehaviour
         var cam = FetchShadowCamera();
         cam.transform.SetPositionAndRotation(position, rotation);
         cam.transform.localScale = scale;
+
+        InitComputeData(out ComputeData cdata);
+        UpdateShadowCamTransformShaderValues(cdata);
+    }
+
+    void UpdateShadowCamTransformShaderValues(ComputeData cdata)
+    {
+        Vector3 size;
+        size.y = cdata.firstCascadeLevelSize * 2;
+        size.x = _shadowCam.aspect * size.y;
+        size.z = cdata.depthOfShadowRange * 2;
+
+        size.x = 1f / size.x;
+        size.y = 1f / size.y;
+        size.z = 128f / size.z;
+
+        var mat = _shadowCam.transform.worldToLocalMatrix;
+        Shader.SetGlobalMatrix("VSM_LightMatrix", Matrix4x4.Scale(size) * mat);
+        Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / cdata.resolution) * mat);
+
+#if UNITY_EDITOR
+        ShowRenderTexturesForDebugging();
+#endif
     }
 
     void UpdateShaderValues(ComputeData cdata)
@@ -403,22 +427,7 @@ public class ShadowVSM : MonoBehaviour
         Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
         Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / cdata.numCascades);
 
-        Vector3 size;
-        size.y = _shadowCam.orthographicSize * 2;
-        size.x = _shadowCam.aspect * size.y;
-        size.z = _shadowCam.farClipPlane - _shadowCam.nearClipPlane;
-
-        size.x = 1f / size.x;
-        size.y = 1f / size.y;
-        size.z = 128f / size.z;
-
-        var mat = _shadowCam.transform.worldToLocalMatrix;
-        Shader.SetGlobalMatrix("VSM_LightMatrix", Matrix4x4.Scale(size) * mat);
-        Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _backTarget1.width) * mat);
-
-#if UNITY_EDITOR
-        ShowRenderTexturesForDebugging();
-#endif
+        UpdateShadowCamTransformShaderValues(cdata);
     }
 
 #if UNITY_EDITOR
