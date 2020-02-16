@@ -1214,6 +1214,34 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 5
       objectReference: {fileID: 0}
+    - target: {fileID: 4092423746222548, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.2604717
+      objectReference: {fileID: 0}
+    - target: {fileID: 4092423746222548, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.9654815
+      objectReference: {fileID: 0}
+    - target: {fileID: 4092423746222548, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 30.196001
+      objectReference: {fileID: 0}
+    - target: {fileID: 4092423746222548, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.296
+      objectReference: {fileID: 0}
+    - target: {fileID: 4092423746222548, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -6.002
+      objectReference: {fileID: 0}
+    - target: {fileID: 4092423746222548, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4092423746222548, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c43436f9bc4d3aa40b10c9acd1a78a22, type: 3}
 --- !u!1001 &1600825392
@@ -1818,26 +1846,6 @@ PrefabInstance:
     - target: {fileID: 2578163209864841561, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2578163209864841538, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
-        type: 3}
-      propertyPath: _backTarget1
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 2578163209864841538, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
-        type: 3}
-      propertyPath: _backTarget2
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 2578163209864841538, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
-        type: 3}
-      propertyPath: _target
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 2578163209864841538, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
-        type: 3}
-      propertyPath: drawTransparent
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

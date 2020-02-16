@@ -60,7 +60,12 @@
                 depth = depth - 0.5;
 #endif
                 depth *= 128;
-                return float4(depth, depth * depth, 1, 0);
+
+                float dx = ddx(depth);
+                float dy = ddy(depth);
+                float bias = 0.25 * (dx * dx + dy * dy);
+
+                return float4(depth, depth * depth + bias, 1, 0);
             }
             ENDCG
         }

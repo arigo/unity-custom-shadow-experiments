@@ -14,7 +14,7 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile _ BLUR_LINEAR_PART BLUR_NOTHING
+            #pragma multi_compile _ BLUR_Y BLUR_LINEAR_PART BLUR_SQUARE_PART
 
             struct appdata
             {
@@ -40,69 +40,56 @@
                 return o;
             }
 
-            float2 pick(float2 index, int x, int y)
-            {
-                index += BlurPixelSize * float2(x, y);
-                float3 src = tex2D(_MainTex, index).rgb;
-#ifdef BLUR_LINEAR_PART
-                return src.rb;
+/* can be defined or undefined here */
+//#define LARGE_BLUR
+
+#ifdef LARGE_BLUR
+    #define LOOP      [unroll] for (int delta = -10; delta <= 10; delta++)
+    #define COEFF(x)  (x) * Coefficients[abs(delta)]
 #else
-                return src.gb;
+    #define LOOP      [unroll] for (int delta = -1; delta <= 1; delta++)
+    #define COEFF(x)  x
 #endif
-            }
 
             float4 frag (v2f i) : SV_Target
             {
-#ifdef BLUR_NOTHING
+                float Coefficients[11] = { 0.14107424,
+                    0.132526984, 0.109868729, 0.080381679, 0.051898313, 0.029570767,
+                    0.014869116, 0.00659813, 0.002583865, 0.00089296, 0.000272337 };
+
+#if BLUR_Y
+                /* first pass: from the RGBA texture produced by shadowCam to the intermediate RGBA texture */
+                float3 col = float3(0, 0, 0);
+                LOOP
+                {
+                    float2 index = i.uv;
+                    index.y += BlurPixelSize * delta;
+                    col += COEFF(tex2D(_MainTex, index).rgb);
+                }
+                return float4(col, 0);
+#elif BLUR_LINEAR_PART
+                /* pass 2.1: blur the intermediate RGBA texture horizontally into the first final R texture */
+                float2 col = float2(0, 0);
+                LOOP
+                {
+                    float2 index = i.uv;
+                    index.x += BlurPixelSize * delta;
+                    col += COEFF(tex2D(_MainTex, index).rb);
+                }
+                return float4(col.x / col.y, 0, 0, 0);
+#elif BLUR_SQUARE_PART
+                /* pass 2.2: blur the intermediate RGBA texture horizontally into the squared final R texture */
+                float2 col = float2(0, 0);
+                LOOP
+                {
+                    float2 index = i.uv;
+                    index.x += BlurPixelSize * delta;
+                    col += COEFF(tex2D(_MainTex, index).gb);
+                }
+                return float4(col.x / col.y, 0, 0, 0);
+#else
                 return _Color;
 #endif
-
-#ifdef GUASSIAN_KERNEL
-//                // sample the texture and apply a Gaussian Kernel blur
-//                float col = 0;
-//                col += pick(i.uv, -2, -2) * 1 / 256.0;
-//                col += pick(i.uv, -2, -1) * 4 / 256.0;
-//                col += pick(i.uv, -2, +0) * 6 / 256.0;
-//                col += pick(i.uv, -2, +1) * 4 / 256.0;
-//                col += pick(i.uv, -2, +2) * 1 / 256.0;
-//
-//                col += pick(i.uv, -1, -2) * 4 / 256.0;
-//                col += pick(i.uv, -1, -1) * 16 / 256.0;
-//                col += pick(i.uv, -1, +0) * 24 / 256.0;
-//                col += pick(i.uv, -1, +1) * 16 / 256.0;
-//                col += pick(i.uv, -1, +2) * 4 / 256.0;
-//
-//                col += pick(i.uv, +0, -2) * 6 / 256.0;
-//                col += pick(i.uv, +0, -1) * 24 / 256.0;
-//                col += pick(i.uv, +0, +0) * 36 / 256.0;
-//                col += pick(i.uv, +0, +1) * 24 / 256.0;
-//                col += pick(i.uv, +0, +2) * 6 / 256.0;
-//
-//                col += pick(i.uv, +1, -2) * 4 / 256.0;
-//                col += pick(i.uv, +1, -1) * 16 / 256.0;
-//                col += pick(i.uv, +1, +0) * 24 / 256.0;
-//                col += pick(i.uv, +1, +1) * 16 / 256.0;
-//                col += pick(i.uv, +1, +2) * 4 / 256.0;
-//
-//                col += pick(i.uv, +2, -2) * 1 / 256.0;
-//                col += pick(i.uv, +2, -1) * 4 / 256.0;
-//                col += pick(i.uv, +2, +0) * 6 / 256.0;
-//                col += pick(i.uv, +2, +1) * 4 / 256.0;
-//                col += pick(i.uv, +2, +2) * 1 / 256.0;
-
-#else
-                // sample the texture and apply a simple Box Blur
-                float2 col = float2(0, 0);
-                [unroll] for (int x = -1; x <= 1; x++)
-                {
-                    [unroll] for (int y = -1; y <= 1; y++)
-                    {
-                        col += pick(i.uv, x, y);
-                    }
-                }
-#endif
-
-                return float4(col.r / col.g, 0, 0, 1);
             }
             ENDCG
         }

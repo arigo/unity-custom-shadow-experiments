@@ -3,7 +3,7 @@
 sampler VSM_ShadowTex1, VSM_ShadowTex2;   // two textures because some targets don't support RGHalf
 float4x4 VSM_LightMatrix;
 float4x4 VSM_LightMatrixNormal;
-float VSM_DeltaExtraDistance, VSM_InvNumCascades;
+float VSM_InvNumCascades;
 
 
 float VSM_ShadowIntensity(float3 wPos, float3 wNormal)
@@ -21,8 +21,8 @@ float VSM_ShadowIntensity(float3 wPos, float3 wNormal)
     float magnitude = max(uv_abs.x, uv_abs.y) * (2 / MAX);
     float cascade = floor(log2(max(magnitude, 1)));
     /* ^^^ an integer at least 0 */
-    float cascade_scale = exp2(cascade);
-    uv /= cascade_scale;
+    float inv_cascade_scale = exp2(-cascade);
+    uv *= inv_cascade_scale;
 
 
     uv += float2(0.5, 0.5 + cascade);
@@ -46,28 +46,30 @@ float VSM_ShadowIntensity(float3 wPos, float3 wNormal)
     // the formula var = E(x^2) - E(x)^2
     // https://en.wikipedia.org/wiki/Algebraic_formula_for_the_variance#Proof
     float var = x2 - x * x;
+    var = max(var, 0.00008);
 
     // calculate our initial probability based on the basic depths
     // if our depth is closer than x, then the fragment has a 100%
     // probability of being lit (p=1)
-    float p_inv = depth > (x + VSM_DeltaExtraDistance * cascade_scale);
+    float p_inv = depth < x;
 
     // calculate the upper bound of the probability using Chebyshev's inequality
     // https://en.wikipedia.org/wiki/Chebyshev%27s_inequality
     float delta = depth - x;
     float p_max = var / (var + delta * delta);
 
-    p_max = 2.44 - p_max * 3;
+    float p_max_inv = smoothstep(0.75, 1, p_max);
+    //p_max = 2.44 - p_max * 3;
     //p_max *= pow(2, cascade);
 
     // To alleviate the light bleeding, expand the shadows to fill in the gaps
     //float amount = _VarianceShadowExpansion;
     //p_max = clamp( (p_max - amount) / (1 - amount), 0, 1);
-    float p_max_inv = clamp(p_max + 0.5, 0, 1);
+    //float p_max_inv = clamp(p_max + 0.5, 0, 1);
 
     //p_max_inv = 1;  // XXXXXXXXXXXXXX
 
-    return 1 - p_max_inv * p_inv;
+    return max(p_max_inv, p_inv);
 }
 
 #undef UNITY_SHADOW_ATTENUATION

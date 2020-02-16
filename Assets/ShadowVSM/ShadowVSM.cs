@@ -31,7 +31,6 @@ public class ShadowVSM : MonoBehaviour
     public int _resolution = 512;
     public int numCascades = 6;
 
-    public float deltaExtraDistance = 0.003f;
     public float firstCascadeLevelSize = 8.0f;
     public float depthOfShadowRange = 1000.0f;
     public FilterMode _filterMode = FilterMode.Bilinear;
@@ -182,21 +181,31 @@ public class ShadowVSM : MonoBehaviour
         _shadowCam.orthographicSize = cdata.firstCascadeLevelSize * Mathf.Pow(2, lvl);
         _shadowCam.RenderWithShader(_depthShader, onlyOpaqueCasters ? "RenderType" : "");
 
+        var rt = RenderTexture.GetTemporary(_resolution, _resolution, 0, RenderTextureFormat.ARGBHalf);
+        rt.wrapMode = TextureWrapMode.Clamp;
+
+        _blur_material.EnableKeyword("BLUR_Y");
+        CustomBlit(_target, rt, _blur_material, 0, 1);
+        _blur_material.DisableKeyword("BLUR_Y");
+
         float y1 = lvl / (float)cdata.numCascades;
         float y2 = (lvl + 1) / (float)cdata.numCascades;
-        _blur_material.DisableKeyword("BLUR_NOTHING");
-        _blur_material.EnableKeyword("BLUR_LINEAR_PART");
-        CustomBlit(_target, _backTarget1, _blur_material, y1, y2);
 
+        _blur_material.EnableKeyword("BLUR_LINEAR_PART");
+        CustomBlit(rt, _backTarget1, _blur_material, y1, y2);
         _blur_material.DisableKeyword("BLUR_LINEAR_PART");
-        CustomBlit(_target, _backTarget2, _blur_material, y1, y2);
+
+        _blur_material.EnableKeyword("BLUR_SQUARE_PART");
+        CustomBlit(rt, _backTarget2, _blur_material, y1, y2);
+        _blur_material.DisableKeyword("BLUR_SQUARE_PART");
+
+        RenderTexture.ReleaseTemporary(rt);
     }
 
     void FinalizeUpdateSteps(ComputeData cdata)
     {
-        _blur_material.EnableKeyword("BLUR_NOTHING");
-        CustomBlit(_target, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
-        CustomBlit(_target, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
+        CustomBlit(null, _backTarget1, _blur_material, 1f - 1f / _backTarget1.height, 1f);
+        CustomBlit(null, _backTarget2, _blur_material, 1f - 1f / _backTarget2.height, 1f);
 
         UpdateShaderValues(cdata);
     }
@@ -393,7 +402,6 @@ public class ShadowVSM : MonoBehaviour
         // Set the qualities of the textures
         Shader.SetGlobalTexture("VSM_ShadowTex1", _backTarget1);
         Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
-        Shader.SetGlobalFloat("VSM_DeltaExtraDistance", deltaExtraDistance);
         Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / cdata.numCascades);
 
         UpdateShadowCamTransformShaderValues();

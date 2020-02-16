@@ -44,17 +44,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _shadowComputation: 1
+  _shadowCameraFollowsMainCamera: 1
   _depthShader: {fileID: 4800000, guid: f94df5574a36a6149b9835728f4ecb5d, type: 3}
   blurShader: {fileID: 4800000, guid: 4dc4ecdc10ebd944b847756bf435eb2c, type: 3}
   _resolution: 512
-  drawTransparent: 0
   numCascades: 6
-  deltaExtraDistance: 0.003
-  firstCascadeLevelSize: 8
+  firstCascadeLevelSize: 6.1
   depthOfShadowRange: 1000
   _filterMode: 1
-  cullingMask: -1
-  replacementTag: 
-  _backTarget1: {fileID: 0}
-  _backTarget2: {fileID: 0}
-  _target: {fileID: 0}
+  useDitheringForTransparent: 0
+  cullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  onlyOpaqueCasters: 1
