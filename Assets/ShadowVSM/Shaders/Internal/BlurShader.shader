@@ -40,14 +40,14 @@
                 return o;
             }
 
-            float pick(float2 index, int x, int y)
+            float2 pick(float2 index, int x, int y)
             {
                 index += BlurPixelSize * float2(x, y);
-                float2 src = tex2D(_MainTex, index).rg;
+                float3 src = tex2D(_MainTex, index).rgb;
 #ifdef BLUR_LINEAR_PART
-                return src.r;
+                return src.rb;
 #else
-                return src.g;
+                return src.gb;
 #endif
             }
 
@@ -92,7 +92,7 @@
 
 #else
                 // sample the texture and apply a simple Box Blur
-                float col = 0;
+                float2 col = float2(0, 0);
                 [unroll] for (int x = -1; x <= 1; x++)
                 {
                     [unroll] for (int y = -1; y <= 1; y++)
@@ -100,10 +100,9 @@
                         col += pick(i.uv, x, y);
                     }
                 }
-                col /= 9;
 #endif
 
-                return float4(col, 0, 0, 1);
+                return float4(col.r / col.g, 0, 0, 1);
             }
             ENDCG
         }

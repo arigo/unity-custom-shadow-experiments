@@ -282,7 +282,13 @@ public class ShadowVSM : MonoBehaviour
             _shadowCam.orthographic = true;
             _shadowCam.nearClipPlane = 0;
             _shadowCam.enabled = false;
-            _shadowCam.backgroundColor = new Color(65, 65*65, 0, 1);
+            /* the shadow camera renders to three components:
+             *    r: depth, scaled in [-64, 64]
+             *    g: r * r
+             *    b: 1
+             * The blue component is used to special-case pixels where nothing was drawn at all,
+             * which have b = ~0 and thus don't count in the blurring algorithm. */
+            _shadowCam.backgroundColor = new Color(0, 0, 1f / 2048, 0);
             _shadowCam.clearFlags = CameraClearFlags.SolidColor;
             _shadowCam.aspect = 1;
 
