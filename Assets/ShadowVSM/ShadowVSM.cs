@@ -41,6 +41,9 @@ public class ShadowVSM : MonoBehaviour
     public bool onlyOpaqueCasters = true;
 
 
+    float internal_scale;
+
+
     /* RenderTextures:
      *   "_target" is the ShadowCam target.  Still needs to be filtered.  Size is 'res x res'.
      *
@@ -128,8 +131,7 @@ public class ShadowVSM : MonoBehaviour
     struct ComputeData
     {
         internal int numCascades, resolution;
-        internal float firstCascadeLevelSize;
-        internal float depthOfShadowRange;
+        internal float firstCascadeLevelSize, depthOfShadowRange;
     }
 
     void InitComputeData(out ComputeData cdata)
@@ -192,7 +194,9 @@ public class ShadowVSM : MonoBehaviour
 
     void ComputeCascade(int lvl, ComputeData cdata)
     {
-        _shadowCam.orthographicSize = cdata.firstCascadeLevelSize * Mathf.Pow(2, lvl);
+        _shadowCam.orthographicSize = cdata.firstCascadeLevelSize * internal_scale * Mathf.Pow(2, lvl);
+        _shadowCam.nearClipPlane = -cdata.depthOfShadowRange * internal_scale;
+        _shadowCam.farClipPlane = cdata.depthOfShadowRange * internal_scale;
         _shadowCam.RenderWithShader(_depthShader, onlyOpaqueCasters ? "RenderType" : "");
 
         var rt = RenderTexture.GetTemporary(_resolution, _resolution, 0, RenderTextureFormat.ARGBHalf);
@@ -306,7 +310,6 @@ public class ShadowVSM : MonoBehaviour
 
             _shadowCam = go.AddComponent<Camera>();
             _shadowCam.orthographic = true;
-            _shadowCam.nearClipPlane = 0;
             _shadowCam.enabled = false;
             /* the shadow camera renders to three components:
              *    r: depth, scaled in [-64, 64]
@@ -350,8 +353,6 @@ public class ShadowVSM : MonoBehaviour
         /* Set up the clip planes so that we store depth values in the range [-0.5, 0.5],
          * with values near zero being near us even if depthOfShadowRange is very large.
          * This maximizes the precision in the RHalf textures near us. */
-        cam.nearClipPlane = -depthOfShadowRange;
-        cam.farClipPlane = depthOfShadowRange;
         cam.cullingMask = cullingMask;
 
         if (_shadowCameraFollowsMainCamera)
@@ -380,12 +381,7 @@ public class ShadowVSM : MonoBehaviour
         }
     }
 
-    public void SetShadowCameraPosition(Vector3 position, Quaternion rotation)
-    {
-        SetShadowCameraPosition(position, rotation, Vector3.one);
-    }
-
-    public void SetShadowCameraPosition(Vector3 position, Quaternion rotation, Vector3 scale)
+    public void SetShadowCameraPosition(Vector3 position, Quaternion rotation, float scale = 1f)
     {
         /* For _shadowCameraFollowsMainCamera == false.  Move the shadow camera to the given
          * global position, rotation, and optionally scale.  Use this in ManualFromScript mode
@@ -394,7 +390,7 @@ public class ShadowVSM : MonoBehaviour
          */
         var cam = FetchShadowCamera();
         cam.transform.SetPositionAndRotation(position, rotation);
-        cam.transform.localScale = scale;
+        internal_scale = scale;
 
         InitComputeData(out ComputeData cdata);
         UpdateShadowCamTransformShaderValues(cdata);
@@ -403,9 +399,9 @@ public class ShadowVSM : MonoBehaviour
     void UpdateShadowCamTransformShaderValues(ComputeData cdata)
     {
         Vector3 size;
-        size.y = cdata.firstCascadeLevelSize * 2;
+        size.y = cdata.firstCascadeLevelSize * internal_scale * 2;
         size.x = _shadowCam.aspect * size.y;
-        size.z = cdata.depthOfShadowRange * 2;
+        size.z = cdata.depthOfShadowRange * internal_scale * 2;
 
         size.x = 1f / size.x;
         size.y = 1f / size.y;
