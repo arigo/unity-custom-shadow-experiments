@@ -378,10 +378,10 @@ public class ShadowVSM : MonoBehaviour
         var cam = FetchShadowCamera();
         cam.transform.SetPositionAndRotation(position, rotation);
         cam.transform.localScale = scale;
-        UpdateShadowCamTransformShaderValues();
+        UpdateShadowCamTransformShaderValues(_resolution);
     }
 
-    void UpdateShadowCamTransformShaderValues()
+    void UpdateShadowCamTransformShaderValues(int width)
     {
         Vector3 size;
         size.y = _shadowCam.orthographicSize * 2;
@@ -394,7 +394,7 @@ public class ShadowVSM : MonoBehaviour
 
         var mat = _shadowCam.transform.worldToLocalMatrix;
         Shader.SetGlobalMatrix("VSM_LightMatrix", Matrix4x4.Scale(size) * mat);
-        Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / _backTarget1.width) * mat);
+        Shader.SetGlobalMatrix("VSM_LightMatrixNormal", Matrix4x4.Scale(Vector3.one * 1.2f / width) * mat);
     }
 
     void UpdateShaderValues(ComputeData cdata)
@@ -404,7 +404,7 @@ public class ShadowVSM : MonoBehaviour
         Shader.SetGlobalTexture("VSM_ShadowTex2", _backTarget2);
         Shader.SetGlobalFloat("VSM_InvNumCascades", 1f / cdata.numCascades);
 
-        UpdateShadowCamTransformShaderValues();
+        UpdateShadowCamTransformShaderValues(_backTarget1.width);
 
 #if UNITY_EDITOR
         ShowRenderTexturesForDebugging(cdata);
