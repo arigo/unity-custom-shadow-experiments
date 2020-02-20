@@ -211,24 +211,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 84471275}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &184357820 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2578163209864841539, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
-    type: 3}
-  m_PrefabInstance: {fileID: 2578163210927916493}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &184357823
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 184357820}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a0bdacd1bc24a764d82e429c4f46dbb3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &199635740
 GameObject:
   m_ObjectHideFlags: 0
@@ -1864,16 +1846,6 @@ PrefabInstance:
     - target: {fileID: 2578163209864841561, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2578163209864841538, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
-        type: 3}
-      propertyPath: _shadowComputation
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2578163209864841538, guid: e8880dc59ddc85347bd3b40d1c7e3d28,
-        type: 3}
-      propertyPath: _shadowCameraFollowsMainCamera
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
