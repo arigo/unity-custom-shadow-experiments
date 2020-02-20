@@ -41,7 +41,7 @@ public class ShadowVSM : MonoBehaviour
     public bool onlyOpaqueCasters = true;
 
 
-    float internal_scale;
+    float internal_scale = 1f;
 
 
     /* RenderTextures:
