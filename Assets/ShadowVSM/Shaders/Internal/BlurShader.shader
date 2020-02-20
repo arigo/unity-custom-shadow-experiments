@@ -76,6 +76,7 @@
                     index.x += BlurPixelSize * delta;
                     col += COEFF(tex2D(_MainTex, index).rb);
                 }
+                if (col.y == 0) col = float2(64, 1);
                 return float4(col.x / col.y, 0, 0, 0);
 #elif BLUR_SQUARE_PART
                 /* pass 2.2: blur the intermediate RGBA texture horizontally into the squared final R texture */
@@ -86,6 +87,7 @@
                     index.x += BlurPixelSize * delta;
                     col += COEFF(tex2D(_MainTex, index).gb);
                 }
+                if (col.y == 0) col = float2(64, 1);
                 return float4(col.x / col.y, 0, 0, 0);
 #else
                 return _Color;

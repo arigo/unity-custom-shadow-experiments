@@ -316,8 +316,8 @@ public class ShadowVSM : MonoBehaviour
              *    g: r * r
              *    b: 1
              * The blue component is used to special-case pixels where nothing was drawn at all,
-             * which have b = ~0 and thus don't count in the blurring algorithm. */
-            _shadowCam.backgroundColor = new Color(0, 0, 1f / 2048, 0);
+             * which have b == 0 and thus don't count in the blurring algorithm. */
+            _shadowCam.backgroundColor = new Color(0, 0, 0, 0);
             _shadowCam.clearFlags = CameraClearFlags.SolidColor;
             _shadowCam.aspect = 1;
 
