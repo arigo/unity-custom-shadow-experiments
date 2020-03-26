@@ -209,13 +209,9 @@ public class ShadowVSM : MonoBehaviour
         float y1 = lvl / (float)cdata.numCascades;
         float y2 = (lvl + 1) / (float)cdata.numCascades;
 
-        _blur_material.EnableKeyword("BLUR_LINEAR_PART");
-        CustomBlit(rt, _renderBackTarget1, _blur_material, y1, y2);
-        _blur_material.DisableKeyword("BLUR_LINEAR_PART");
-
-        _blur_material.EnableKeyword("BLUR_SQUARE_PART");
-        CustomBlit(rt, _renderBackTarget2, _blur_material, y1, y2);
-        _blur_material.DisableKeyword("BLUR_SQUARE_PART");
+        _blur_material.EnableKeyword("BLUR_LINEAR_AND_SQUARE_PART");
+        CustomBlit2(rt, _renderBackTarget1, _renderBackTarget2, _blur_material, y1, y2);
+        _blur_material.DisableKeyword("BLUR_LINEAR_AND_SQUARE_PART");
 
         RenderTexture.ReleaseTemporary(rt);
     }
@@ -233,8 +229,17 @@ public class ShadowVSM : MonoBehaviour
 
     static void CustomBlit(Texture source, RenderTexture target, Material mat, float y1, float y2)
     {
+        CustomBlit2(source, target, null, mat, y1, y2);
+    }
+
+    static void CustomBlit2(Texture source, RenderTexture target1, RenderTexture target2, Material mat, float y1, float y2)
+    {
         var original = RenderTexture.active;
-        RenderTexture.active = target;
+        if (target2 == null)
+            RenderTexture.active = target1;
+        else
+            Graphics.SetRenderTarget(new RenderBuffer[] { target1.colorBuffer, target2.colorBuffer },
+                                     target1.depthBuffer);
 
         // Set the '_MainTex' variable to the texture given by 'source'
         mat.SetTexture("_MainTex", source);

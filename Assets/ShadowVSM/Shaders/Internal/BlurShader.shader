@@ -14,7 +14,7 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile _ BLUR_Y BLUR_LINEAR_PART BLUR_SQUARE_PART
+            #pragma multi_compile _ BLUR_Y BLUR_LINEAR_AND_SQUARE_PART
 
             struct appdata
             {
@@ -26,6 +26,12 @@
             {
                 float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
+            };
+
+            struct f2a
+            {
+                float4 color0 : COLOR0;
+                float4 color1 : COLOR1;
             };
 
             sampler _MainTex;
@@ -51,7 +57,12 @@
     #define COEFF(x)  x
 #endif
 
-            float4 frag (v2f i) : SV_Target
+#if BLUR_LINEAR_AND_SQUARE_PART
+            f2a
+#else
+            float4
+#endif
+                frag (v2f i) : SV_Target
             {
                 float Coefficients[11] = { 0.14107424,
                     0.132526984, 0.109868729, 0.080381679, 0.051898313, 0.029570767,
@@ -67,28 +78,21 @@
                     col += COEFF(tex2D(_MainTex, index).rgb);
                 }
                 return float4(col, 0);
-#elif BLUR_LINEAR_PART
-                /* pass 2.1: blur the intermediate RGBA texture horizontally into the first final R texture */
-                float2 col = float2(0, 0);
+#elif BLUR_LINEAR_AND_SQUARE_PART
+                /* pass 2: blur the intermediate RGBA texture horizontally into the final R textures */
+                float3 col = float3(0, 0, 0);
                 LOOP
                 {
                     float2 index = i.uv;
                     index.x += BlurPixelSize * delta;
-                    col += COEFF(tex2D(_MainTex, index).rb);
+                    col += COEFF(tex2D(_MainTex, index).rgb);
                 }
-                if (col.y == 0) col = float2(64, 1);
-                return float4(col.x / col.y, 0, 0, 0);
-#elif BLUR_SQUARE_PART
-                /* pass 2.2: blur the intermediate RGBA texture horizontally into the squared final R texture */
-                float2 col = float2(0, 0);
-                LOOP
-                {
-                    float2 index = i.uv;
-                    index.x += BlurPixelSize * delta;
-                    col += COEFF(tex2D(_MainTex, index).gb);
-                }
-                if (col.y == 0) col = float2(64, 1);
-                return float4(col.x / col.y, 0, 0, 0);
+                if (col.z == 0) col = float3(64, 64, 1);
+                float2 result = col.xy / col.z;
+                f2a OUT;
+                OUT.color0 = float4(result.x, 0, 0, 0);
+                OUT.color1 = float4(result.y, 0, 0, 0);
+                return OUT;
 #else
                 return _Color;
 #endif
